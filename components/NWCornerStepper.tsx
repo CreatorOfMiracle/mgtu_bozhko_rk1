@@ -24,12 +24,12 @@ const toRoman = (num) => {
 
 /* =========================== helpers (VAM) ========================== */
 function twoSmallest(values) {
-  let m1 = Infinity, m2 = Infinity;
-  for (const v of values) {
-    if (v < m1) { m2 = m1; m1 = v; }
-    else if (v < m2) { m2 = v; }
-  }
-  return [m1, m2 === Infinity ? m1 : m2];
+  if (values.length === 0) return [Infinity, Infinity];
+  if (values.length === 1) return [values[0], values[0]];
+  
+  // Сортируем копию массива и берем первые два элемента
+  const sorted = [...values].sort((a, b) => a - b);
+  return [sorted[0], sorted[1]];
 }
 
 function cloneAlloc(A) {
@@ -57,7 +57,8 @@ function computeVogelSteps(costs, s0, d0) {
       for (let j=0;j<n;j++) if (demands[j] > 0) rowCosts.push(costs[i][j]);
       if (rowCosts.length === 0) continue;
       const [a,b] = twoSmallest(rowCosts);
-      rowPen[i] = b - a;
+      // штраф = разница между вторым и первым минимальными значениями
+      rowPen[i] = rowCosts.length === 1 ? a : (b - a);
     }
     // штрафы по столбцам
     const colPen = Array(n).fill(-Infinity);
@@ -67,7 +68,8 @@ function computeVogelSteps(costs, s0, d0) {
       for (let i=0;i<m;i++) if (supplies[i] > 0) colCosts.push(costs[i][j]);
       if (colCosts.length === 0) continue;
       const [a,b] = twoSmallest(colCosts);
-      colPen[j] = b - a;
+      // штраф = разница между вторым и первым минимальными значениями
+      colPen[j] = colCosts.length === 1 ? a : (b - a);
     }
 
     // выбираем максимальный штраф
@@ -326,9 +328,11 @@ export default function VogelStepper() {
                   {/* Step columns with penalties */}
                   {Array.from({ length: cursor + 1 }, (_, k) => {
                     const val = steps[k]?.suppliesLeft?.[i] ?? 0;
-                    const pen = steps[k]?.rowPen?.[i];
-                    const isPenMax = isFinite(pen) && pen === Math.max(...steps[k].rowPen.filter(isFinite));
-                    const isRowChosen = steps[k]?.chosenBy === "row";
+                    // Для столбца Ak нужны штрафы СЛЕДУЮЩЕГО шага (k+1), если он есть
+                    const nextStep = steps[k + 1];
+                    const pen = nextStep?.rowPen?.[i];
+                    const isPenMax = nextStep && isFinite(pen) && pen === Math.max(...nextStep.rowPen.filter(isFinite));
+                    const isRowChosen = nextStep?.chosenBy === "row";
                     return (
                       <Td extra={val === 0 ? "bg-gray-100 text-gray-400" : ""} key={`supply-res-${i}-${k}`}>
                         {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isRowChosen && isPenMax ? "R" : ""}`}
@@ -357,24 +361,28 @@ export default function VogelStepper() {
               </tr>
 
               {/* Demand residual rows with penalties */}
-              {Array.from({ length: cursor + 1 }, (_, k) => (
-                <tr key={`demand-residual-row-${k}`}>
-                  <Td extra="font-bold bg-blue-50">B{k + 1}</Td>
-                  {demandLabels.map((_, j) => {
-                    const val = steps[k]?.demandsLeft?.[j] ?? 0;
-                    const pen = steps[k]?.colPen?.[j];
-                    const isPenMax = isFinite(pen) && pen === Math.max(...steps[k].colPen.filter(isFinite));
-                    const isColChosen = steps[k]?.chosenBy === "col";
-                    return (
-                      <Td extra={val === 0 ? "bg-gray-100 text-gray-400" : ""} key={`demand-res-${k}-${j}`}>
-                        {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isColChosen && isPenMax ? "R" : ""}`}
-                      </Td>
-                    );
-                  })}
-                  <Td extra="bg-gray-100"></Td>
-                  {Array.from({ length: cursor + 1 }, (_, kk) => <Td extra="bg-gray-50" key={`spacer-${k}-${kk}`}></Td>)}
-                </tr>
-              ))}
+              {Array.from({ length: cursor + 1 }, (_, k) => {
+                // Для строки Bk нужны штрафы СЛЕДУЮЩЕГО шага (k+1), если он есть
+                const nextStep = steps[k + 1];
+                return (
+                  <tr key={`demand-residual-row-${k}`}>
+                    <Td extra="font-bold bg-blue-50">B{k + 1}</Td>
+                    {demandLabels.map((_, j) => {
+                      const val = steps[k]?.demandsLeft?.[j] ?? 0;
+                      const pen = nextStep?.colPen?.[j];
+                      const isPenMax = nextStep && isFinite(pen) && pen === Math.max(...nextStep.colPen.filter(isFinite));
+                      const isColChosen = nextStep?.chosenBy === "col";
+                      return (
+                        <Td extra={val === 0 ? "bg-gray-100 text-gray-400" : ""} key={`demand-res-${k}-${j}`}>
+                          {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isColChosen && isPenMax ? "R" : ""}`}
+                        </Td>
+                      );
+                    })}
+                    <Td extra="bg-gray-100"></Td>
+                    {Array.from({ length: cursor + 1 }, (_, kk) => <Td extra="bg-gray-50" key={`spacer-${k}-${kk}`}></Td>)}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
