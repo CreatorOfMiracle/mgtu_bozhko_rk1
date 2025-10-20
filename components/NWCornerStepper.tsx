@@ -9,9 +9,9 @@ const Td = ({ extra = "", children = null }: { extra?: string; children?: any })
 );
 
 /* ======================= Helpers для римских цифр ======================= */
-const toRoman = (num) => {
+const toRoman = (num: number): string => {
   if (num <= 0) return "";
-  const romans = [
+  const romans: [number, string][] = [
     [1000, "M"],[900, "CM"],[500, "D"],[400, "CD"],[100, "C"],[90, "XC"],
     [50, "L"],[40, "XL"],[10, "X"],[9, "IX"],[5, "V"],[4, "IV"],[1, "I"],
   ];
@@ -23,7 +23,7 @@ const toRoman = (num) => {
 };
 
 /* =========================== helpers (VAM) ========================== */
-function twoSmallest(values) {
+function twoSmallest(values: number[]): [number, number] {
   if (values.length === 0) return [Infinity, Infinity];
   if (values.length === 1) return [values[0], values[0]];
   
@@ -32,20 +32,20 @@ function twoSmallest(values) {
   return [sorted[0], sorted[1]];
 }
 
-function cloneAlloc(A) {
+function cloneAlloc(A: Array<Array<{ x: number; penaltyUsed?: number }>>) {
   return A.map(r => r.map(c => ({ ...c })));
 }
 
 /** Считает ВСЕ шаги Фогеля (до закрытия задачи) — для пошагового просмотра */
-function computeVogelSteps(costs, s0, d0) {
+function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
   const m = s0.length, n = d0.length;
   const supplies = s0.slice();
   const demands  = d0.slice();
-  const alloc = Array.from({ length: m }, () =>
+  const alloc: { x: number; penaltyUsed?: number }[][] = Array.from({ length: m }, () =>
     Array.from({ length: n }, () => ({ x: 0 }))
   );
 
-  const steps = [];
+  const steps: any[] = [];
   let Z = 0, step = 0;
 
   while (supplies.some(v=>v>0) && demands.some(v=>v>0) && step < 10_000) {
@@ -134,13 +134,22 @@ export default function VogelStepper() {
   const [supplies, setSupplies] = useState(defaultSupplies);
   const [demands, setDemands] = useState(defaultDemands);
 
+  type AllocCell = { x: number; penaltyUsed?: number };
+  type Step = {
+    stepIndex: number;
+    i: number; j: number; chosenBy: string; placed: number;
+    rowPen: number[]; colPen: number[];
+    alloc: AllocCell[][];
+    suppliesLeft: number[]; demandsLeft: number[]; totalCost: number;
+  };
+
   const demandLabels = useMemo(()=>Array.from({length:n},(_,j)=>`T${j+1}`),[n]);
   const supplyLabels = useMemo(()=>Array.from({length:m},(_,i)=>`S${i+1}`),[m]);
 
   // шаги и курсор
-  const [steps, setSteps] = useState([]);
+  const [steps, setSteps] = useState<Step[]>([]);
   const [cursor, setCursor] = useState(0);
-  const current = steps[cursor];
+  const current = steps[cursor] as Step | undefined;
 
   const canPrev = cursor > 0;
   const canNext = cursor < Math.max(0, steps.length - 1);
@@ -160,10 +169,10 @@ export default function VogelStepper() {
   };
 
   // суммирования
-  const rowSum = (A, i) => A[i].reduce((s,c)=>s+c.x,0);
-  const colSum = (A, j) => A.reduce((s,r)=>s+r[j].x,0);
-  const totalCost = (A) => {
-    let z=0; for(let i=0;i<m;i++)for(let j=0;j<n;j++) z+=A[i][j].x*costs[i][j]; return z;
+  const rowSum = (A: AllocCell[][], i: number) => A[i].reduce((s: number, c: AllocCell) => s + c.x, 0);
+  const colSum = (A: AllocCell[][], j: number) => A.reduce((s: number, r: AllocCell[]) => s + r[j].x, 0);
+  const totalCost = (A: AllocCell[][]) => {
+    let z = 0; for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) z += A[i][j].x * costs[i][j]; return z;
   };
 
   return (
@@ -310,8 +319,8 @@ export default function VogelStepper() {
                 <tr key={`supply-row-${i}`}>
                   <Td extra="font-bold bg-gray-100">{lbl}</Td>
                   {demandLabels.map((_, j) => {
-                    const placed = current.alloc[i][j];
-                    const isActive = current && current.i === i && current.j === j;
+                    const placed = current?.alloc?.[i]?.[j] ?? { x: 0 };
+                    const isActive = !!current && current.i === i && current.j === j;
                     return (
                       <td key={`allocation-cell-${i}-${j}`} className={`relative px-2 py-2 text-center border border-gray-400 ${isActive?"bg-yellow-200" : "bg-white"}`}>
                         <div className="absolute right-1 top-1 text-[10px] text-gray-500">c={costs[i][j]}</div>
