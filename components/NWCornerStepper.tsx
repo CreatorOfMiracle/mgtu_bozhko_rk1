@@ -36,11 +36,42 @@ function cloneAlloc(A: Array<Array<{ x: number; penaltyUsed?: number }>>) {
   return A.map(r => r.map(c => ({ ...c })));
 }
 
+/** Балансирует задачу, добавляя фиктивного поставщика или потребителя */
+function balanceTask(costs: number[][], supplies: number[], demands: number[]) {
+  const totalSupply = supplies.reduce((a, b) => a + b, 0);
+  const totalDemand = demands.reduce((a, b) => a + b, 0);
+
+  let balancedCosts = costs.map(r => r.slice());
+  let balancedSupplies = supplies.slice();
+  let balancedDemands = demands.slice();
+  let addedSupplier = false;
+  let addedConsumer = false;
+
+  if (totalSupply > totalDemand) {
+    // Добавляем фиктивного потребителя
+    const diff = totalSupply - totalDemand;
+    balancedDemands.push(diff);
+    balancedCosts = balancedCosts.map(row => [...row, 0]);
+    addedConsumer = true;
+  } else if (totalDemand > totalSupply) {
+    // Добавляем фиктивного поставщика
+    const diff = totalDemand - totalSupply;
+    balancedSupplies.push(diff);
+    balancedCosts.push(Array(balancedDemands.length).fill(0));
+    addedSupplier = true;
+  }
+
+  return { balancedCosts, balancedSupplies, balancedDemands, addedSupplier, addedConsumer };
+}
+
 /** Считает ВСЕ шаги Фогеля (до закрытия задачи) — для пошагового просмотра */
 function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
-  const m = s0.length, n = d0.length;
-  const supplies = s0.slice();
-  const demands  = d0.slice();
+  // Балансируем задачу перед расчётом
+  const { balancedCosts, balancedSupplies, balancedDemands } = balanceTask(costs, s0, d0);
+  
+  const m = balancedSupplies.length, n = balancedDemands.length;
+  const supplies = balancedSupplies.slice();
+  const demands  = balancedDemands.slice();
   const alloc: { x: number; penaltyUsed?: number }[][] = Array.from({ length: m }, () =>
     Array.from({ length: n }, () => ({ x: 0 }))
   );
@@ -54,7 +85,7 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
     for (let i=0;i<m;i++) {
       if (supplies[i] === 0) continue;
       const rowCosts = [];
-      for (let j=0;j<n;j++) if (demands[j] > 0) rowCosts.push(costs[i][j]);
+      for (let j=0;j<n;j++) if (demands[j] > 0) rowCosts.push(balancedCosts[i][j]);
       if (rowCosts.length === 0) continue;
       const [a,b] = twoSmallest(rowCosts);
       // штраф = разница между вторым и первым минимальными значениями
@@ -65,7 +96,7 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
     for (let j=0;j<n;j++) {
       if (demands[j] === 0) continue;
       const colCosts = [];
-      for (let i=0;i<m;i++) if (supplies[i] > 0) colCosts.push(costs[i][j]);
+      for (let i=0;i<m;i++) if (supplies[i] > 0) colCosts.push(balancedCosts[i][j]);
       if (colCosts.length === 0) continue;
       const [a,b] = twoSmallest(colCosts);
       // штраф = разница между вторым и первым минимальными значениями
@@ -84,12 +115,12 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
     if (chosenBy === "row") {
       selI = bestIdx;
       let min = Infinity, arg = -1;
-      for (let j=0;j<n;j++) if (demands[j] > 0 && costs[selI][j] < min) { min = costs[selI][j]; arg = j; }
+      for (let j=0;j<n;j++) if (demands[j] > 0 && balancedCosts[selI][j] < min) { min = balancedCosts[selI][j]; arg = j; }
       selJ = arg;
     } else {
       selJ = bestIdx;
       let min = Infinity, arg = -1;
-      for (let i=0;i<m;i++) if (supplies[i] > 0 && costs[i][selJ] < min) { min = costs[i][selJ]; arg = i; }
+      for (let i=0;i<m;i++) if (supplies[i] > 0 && balancedCosts[i][selJ] < min) { min = balancedCosts[i][selJ]; arg = i; }
       selI = arg;
     }
 
@@ -98,7 +129,7 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
     alloc[selI][selJ].penaltyUsed = bestPen;
     supplies[selI] -= taken;
     demands[selJ]  -= taken;
-    Z += taken * costs[selI][selJ];
+    Z += taken * balancedCosts[selI][selJ];
 
     steps.push({
       stepIndex: ++step,
@@ -143,6 +174,12 @@ export default function VogelStepper() {
     suppliesLeft: number[]; demandsLeft: number[]; totalCost: number;
   };
 
+  // Проверяем балансировку
+  const totalSupply = useMemo(() => supplies.reduce((a, b) => a + b, 0), [supplies]);
+  const totalDemand = useMemo(() => demands.reduce((a, b) => a + b, 0), [demands]);
+  const isBalanced = totalSupply === totalDemand;
+  const balanceInfo = useMemo(() => balanceTask(costs, supplies, demands), [costs, supplies, demands]);
+
   const demandLabels = useMemo(()=>Array.from({length:n},(_,j)=>`T${j+1}`),[n]);
   const supplyLabels = useMemo(()=>Array.from({length:m},(_,i)=>`S${i+1}`),[m]);
 
@@ -178,6 +215,26 @@ export default function VogelStepper() {
   return (
     <div className="p-2 sm:p-3 max-w-[1400px] mx-auto">
       <h1 className="text-lg sm:text-xl font-bold mb-3">Метод Фогеля — пошагово</h1>
+
+      {/* Информация о балансировке */}
+      {!isBalanced && (
+        <div className="mb-3 p-3 border rounded bg-amber-50 border-amber-300">
+          <div className="font-semibold text-sm mb-1 text-amber-900">⚠️ Задача несбалансирована</div>
+          <div className="text-xs text-amber-800">
+            Сумма запасов: <strong>{totalSupply}</strong>, Сумма потребностей: <strong>{totalDemand}</strong>
+            {totalSupply > totalDemand && (
+              <div className="mt-1">
+                → Автоматически добавлен фиктивный потребитель <strong>T{n+1}</strong> с потребностью <strong>{totalSupply - totalDemand}</strong> и нулевыми тарифами.
+              </div>
+            )}
+            {totalDemand > totalSupply && (
+              <div className="mt-1">
+                → Автоматически добавлен фиктивный поставщик <strong>S{m+1}</strong> с запасом <strong>{totalDemand - totalSupply}</strong> и нулевыми тарифами.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Панель ввода */}
       <div className="grid grid-cols-1 gap-3 mb-3">
@@ -249,6 +306,7 @@ export default function VogelStepper() {
             <tr>
               <Th extra="bg-gray-50"></Th>
               {demandLabels.map((b,j)=><Th extra="bg-gray-50" key={`h-${j}`}>{b}</Th>)}
+              {balanceInfo.addedConsumer && <Th extra="bg-amber-100" key="h-fict">T{n+1} (фикт.)</Th>}
             </tr>
           </thead>
           <tbody>
@@ -269,8 +327,16 @@ export default function VogelStepper() {
                     />
                   </td>
                 ))}
+                {balanceInfo.addedConsumer && <Td extra="bg-amber-50" key={`c-${i}-fict`}>0</Td>}
               </tr>
             ))}
+            {balanceInfo.addedSupplier && (
+              <tr key="r-fict">
+                <Td extra="bg-amber-100 font-medium" key="rs-fict">S{m+1} (фикт.)</Td>
+                {Array.from({length:n},(_,j)=><Td extra="bg-amber-50" key={`c-fict-${j}`}>0</Td>)}
+                {balanceInfo.addedConsumer && <Td extra="bg-amber-50" key="c-fict-fict">0</Td>}
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -311,6 +377,7 @@ export default function VogelStepper() {
               <tr>
                 <Th extra="bg-gray-100 font-bold">Фогель</Th>
                 {demandLabels.map((b, j) => <Th extra="bg-gray-100" key={`th-demand-${j}`}>{b}</Th>)}
+                {balanceInfo.addedConsumer && <Th extra="bg-amber-100" key="th-demand-fict">T{n+1} (ф)</Th>}
                 <Th extra="bg-gray-100 font-bold">A</Th>
                 {cursor > 0 && Array.from({ length: cursor }, (_, k) => <Th extra="bg-blue-50" key={`th-roman-${k}`}>A{k + 1}</Th>)}
               </tr>
@@ -330,6 +397,12 @@ export default function VogelStepper() {
                       </td>
                     );
                   })}
+                  {balanceInfo.addedConsumer && (
+                    <td key={`allocation-cell-${i}-fict`} className={`relative px-1 sm:px-2 py-1 sm:py-2 text-center border border-gray-400 ${!!current && current.i === i && current.j === n ? "bg-yellow-200" : "bg-amber-50"}`}>
+                      <div className="absolute right-0.5 sm:right-1 top-0.5 sm:top-1 text-[8px] sm:text-[10px] text-gray-500">c=0</div>
+                      <div className="font-semibold text-sm sm:text-lg">{(current?.alloc?.[i]?.[n]?.x ?? 0) > 0 ? current!.alloc[i][n].x : ""}</div>
+                    </td>
+                  )}
                   {/* A column - initial supplies with first step penalties */}
                   <Td extra="bg-yellow-50 font-semibold">
                     {(() => {
@@ -357,6 +430,50 @@ export default function VogelStepper() {
                 </tr>
               ))}
               
+              {/* Fictitious supplier row if added */}
+              {balanceInfo.addedSupplier && (
+                <tr key="supply-row-fict">
+                  <Td extra="font-bold bg-amber-100">S{m+1} (ф)</Td>
+                  {demandLabels.map((_, j) => {
+                    const placed = current?.alloc?.[m]?.[j] ?? { x: 0 };
+                    const isActive = !!current && current.i === m && current.j === j;
+                    return (
+                      <td key={`allocation-cell-fict-${j}`} className={`relative px-1 sm:px-2 py-1 sm:py-2 text-center border border-gray-400 ${isActive?"bg-yellow-200" : "bg-amber-50"}`}>
+                        <div className="absolute right-0.5 sm:right-1 top-0.5 sm:top-1 text-[8px] sm:text-[10px] text-gray-500">c=0</div>
+                        <div className="font-semibold text-sm sm:text-lg">{placed.x > 0 ? placed.x : ""}</div>
+                      </td>
+                    );
+                  })}
+                  {balanceInfo.addedConsumer && (
+                    <td key="allocation-cell-fict-fict" className={`relative px-1 sm:px-2 py-1 sm:py-2 text-center border border-gray-400 ${!!current && current.i === m && current.j === n ? "bg-yellow-200" : "bg-amber-50"}`}>
+                      <div className="absolute right-0.5 sm:right-1 top-0.5 sm:top-1 text-[8px] sm:text-[10px] text-gray-500">c=0</div>
+                      <div className="font-semibold text-sm sm:text-lg">{(current?.alloc?.[m]?.[n]?.x ?? 0) > 0 ? current!.alloc[m][n].x : ""}</div>
+                    </td>
+                  )}
+                  <Td extra="bg-yellow-50 font-semibold">
+                    {(() => {
+                      const firstStep = steps[0];
+                      const pen = firstStep?.rowPen?.[m];
+                      const isPenMax = isFinite(pen) && pen === Math.max(...firstStep.rowPen.filter(isFinite));
+                      const isRowChosen = firstStep?.chosenBy === "row";
+                      return `${balanceInfo.balancedSupplies[m]}/${isFinite(pen) ? pen : "0"}${isRowChosen && isPenMax ? "R" : ""}`;
+                    })()}
+                  </Td>
+                  {cursor > 0 && Array.from({ length: cursor }, (_, k) => {
+                    const val = steps[k]?.suppliesLeft?.[m] ?? 0;
+                    const nextStep = steps[k + 1];
+                    const pen = nextStep?.rowPen?.[m];
+                    const isPenMax = nextStep && isFinite(pen) && pen === Math.max(...nextStep.rowPen.filter(isFinite));
+                    const isRowChosen = nextStep?.chosenBy === "row";
+                    return (
+                      <Td extra={val === 0 ? "bg-gray-100 text-gray-400" : ""} key={`supply-res-fict-${k}`}>
+                        {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isRowChosen && isPenMax ? "R" : ""}`}
+                      </Td>
+                    );
+                  })}
+                </tr>
+              )}
+              
               {/* B row - initial demands with first step penalties */}
               <tr>
                 <Td extra="font-bold bg-gray-100">B</Td>
@@ -371,6 +488,17 @@ export default function VogelStepper() {
                     </Td>
                   );
                 })}
+                {balanceInfo.addedConsumer && (
+                  <Td extra="bg-amber-100 font-semibold" key="b-init-fict">
+                    {(() => {
+                      const firstStep = steps[0];
+                      const pen = firstStep?.colPen?.[n];
+                      const isPenMax = isFinite(pen) && pen === Math.max(...firstStep.colPen.filter(isFinite));
+                      const isColChosen = firstStep?.chosenBy === "col";
+                      return `${balanceInfo.balancedDemands[n]}/${isFinite(pen) ? pen : "0"}${isColChosen && isPenMax ? "R" : ""}`;
+                    })()}
+                  </Td>
+                )}
                 <Td extra="bg-gray-100"></Td>
                 {cursor > 0 && Array.from({ length: cursor }, (_, k) => <Td extra="bg-gray-50" key={`b-spacer-${k}`}></Td>)}
               </tr>
@@ -393,6 +521,17 @@ export default function VogelStepper() {
                         </Td>
                       );
                     })}
+                    {balanceInfo.addedConsumer && (
+                      <Td extra={steps[k]?.demandsLeft?.[n] === 0 ? "bg-gray-100 text-gray-400" : ""} key={`demand-res-${k}-fict`}>
+                        {(() => {
+                          const val = steps[k]?.demandsLeft?.[n] ?? 0;
+                          const pen = nextStep?.colPen?.[n];
+                          const isPenMax = nextStep && isFinite(pen) && pen === Math.max(...nextStep.colPen.filter(isFinite));
+                          const isColChosen = nextStep?.chosenBy === "col";
+                          return val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isColChosen && isPenMax ? "R" : ""}`;
+                        })()}
+                      </Td>
+                    )}
                     <Td extra="bg-gray-100"></Td>
                     {cursor > 0 && Array.from({ length: cursor }, (_, kk) => <Td extra="bg-gray-50" key={`spacer-${k}-${kk}`}></Td>)}
                   </tr>
@@ -412,6 +551,7 @@ export default function VogelStepper() {
               <tr>
                 <Th extra="bg-gray-100"></Th>
                 {demandLabels.map((b,j)=><Th extra="bg-gray-100" key={`fth-${j}`}>{b}</Th>)}
+                {balanceInfo.addedConsumer && <Th extra="bg-amber-100" key="fth-fict">T{n+1} (ф)</Th>}
                 <Th extra="bg-gray-100">Σ</Th>
               </tr>
             </thead>
@@ -428,17 +568,57 @@ export default function VogelStepper() {
                       </td>
                     );
                   })}
+                  {balanceInfo.addedConsumer && (
+                    <td key={`fc-${i}-fict`} className="relative border px-1 sm:px-2 py-2 sm:py-3 text-center bg-amber-50">
+                      <div className="absolute right-0.5 sm:right-1 top-0.5 sm:top-1 text-[8px] sm:text-[10px] text-gray-500">c=0</div>
+                      <div className="text-sm sm:text-lg font-semibold">{current.alloc[i][n]?.x > 0 ? current.alloc[i][n].x : ""}</div>
+                    </td>
+                  )}
                   <Td extra="bg-gray-50 font-semibold">
                     {current.alloc[i].reduce((s,c)=>s+c.x,0)}
                   </Td>
                 </tr>
               ))}
+              {balanceInfo.addedSupplier && (
+                <tr key="frow-fict">
+                  <Td extra="bg-amber-100 font-semibold">S{m+1} (ф)</Td>
+                  {Array.from({length:n},(_,j)=>{
+                    const cell = current.alloc[m][j];
+                    return (
+                      <td key={`fc-fict-${j}`} className="relative border px-1 sm:px-2 py-2 sm:py-3 text-center bg-amber-50">
+                        <div className="absolute right-0.5 sm:right-1 top-0.5 sm:top-1 text-[8px] sm:text-[10px] text-gray-500">c=0</div>
+                        <div className="text-sm sm:text-lg font-semibold">{cell.x>0 ? cell.x : ""}</div>
+                      </td>
+                    );
+                  })}
+                  {balanceInfo.addedConsumer && (
+                    <td key="fc-fict-fict" className="relative border px-1 sm:px-2 py-2 sm:py-3 text-center bg-amber-50">
+                      <div className="absolute right-0.5 sm:right-1 top-0.5 sm:top-1 text-[8px] sm:text-[10px] text-gray-500">c=0</div>
+                      <div className="text-sm sm:text-lg font-semibold">{current.alloc[m][n]?.x > 0 ? current.alloc[m][n].x : ""}</div>
+                    </td>
+                  )}
+                  <Td extra="bg-amber-100 font-semibold">
+                    {current.alloc[m].reduce((s,c)=>s+c.x,0)}
+                  </Td>
+                </tr>
+              )}
               <tr>
                 <Td extra="bg-gray-50 font-semibold">Σ</Td>
                 {Array.from({length:n},(_,j)=>{
                   let s=0; for(let i=0;i<m;i++) s+=current.alloc[i][j].x;
+                  if (balanceInfo.addedSupplier) s+=current.alloc[m][j].x;
                   return <Td extra="bg-gray-50 font-semibold" key={`fcsum-${j}`}>{s}</Td>;
                 })}
+                {balanceInfo.addedConsumer && (
+                  <Td extra="bg-amber-100 font-semibold" key="fcsum-fict">
+                    {(() => {
+                      let s=0; 
+                      for(let i=0;i<m;i++) s+=current.alloc[i][n]?.x ?? 0;
+                      if (balanceInfo.addedSupplier) s+=current.alloc[m][n]?.x ?? 0;
+                      return s;
+                    })()}
+                  </Td>
+                )}
                 <Td extra="bg-green-100 font-bold">Z = {totalCost(current.alloc)}</Td>
               </tr>
             </tbody>
@@ -461,11 +641,20 @@ export default function VogelStepper() {
             <span className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-50 border border-gray-300 shrink-0"></span>
             <span className="text-[10px] sm:text-xs">Римские цифры - номера итераций</span>
           </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-amber-50 border border-amber-300 shrink-0"></span>
+            <span className="text-[10px] sm:text-xs">Фиктивные элементы (c=0)</span>
+          </span>
         </div>
         <div className="text-[10px] sm:text-xs leading-relaxed">
           Формат ячеек: <strong>остаток/штраф</strong>. Максимальный штраф отмечен буквой <strong>R</strong>.
           Штраф — разница между двумя минимальными тарифами в строке (для A) или столбце (для B).
           Выбирается максимальный штраф, затем в соответствующей строке/столбце — минимальный тариф.
+          {!isBalanced && (
+            <div className="mt-2 text-amber-700 font-medium">
+              ℹ️ Задача несбалансирована — автоматически добавлены фиктивные элементы с нулевыми тарифами для балансировки.
+            </div>
+          )}
         </div>
       </div>
     </div>
