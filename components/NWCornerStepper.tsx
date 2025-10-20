@@ -104,10 +104,52 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
     }
 
     // выбираем максимальный штраф
+    // Если несколько штрафов одинаковые, выбираем тот, где минимальная стоимость меньше
     let chosenBy = "row";
     let bestIdx = -1, bestPen = -Infinity;
-    for (let i=0;i<m;i++) if (isFinite(rowPen[i]) && rowPen[i] > bestPen) { bestPen=rowPen[i]; chosenBy="row"; bestIdx=i; }
-    for (let j=0;j<n;j++) if (isFinite(colPen[j]) && colPen[j] > bestPen) { bestPen=colPen[j]; chosenBy="col"; bestIdx=j; }
+    let bestMinCost = Infinity;
+    
+    // Сначала находим максимальный штраф
+    for (let i=0;i<m;i++) if (isFinite(rowPen[i]) && rowPen[i] > bestPen) { bestPen=rowPen[i]; }
+    for (let j=0;j<n;j++) if (isFinite(colPen[j]) && colPen[j] > bestPen) { bestPen=colPen[j]; }
+    
+    // Теперь среди всех строк/столбцов с максимальным штрафом выбираем тот, где минимальная стоимость меньше
+    for (let i=0;i<m;i++) {
+      if (isFinite(rowPen[i]) && rowPen[i] === bestPen) {
+        // Находим минимальную стоимость в этой строке
+        let minCost = Infinity;
+        for (let j=0;j<n;j++) {
+          if (demands[j] > 0 && balancedCosts[i][j] < minCost) {
+            minCost = balancedCosts[i][j];
+          }
+        }
+        // Если эта строка имеет меньшую минимальную стоимость, выбираем её
+        if (minCost < bestMinCost) {
+          bestMinCost = minCost;
+          chosenBy = "row";
+          bestIdx = i;
+        }
+      }
+    }
+    
+    for (let j=0;j<n;j++) {
+      if (isFinite(colPen[j]) && colPen[j] === bestPen) {
+        // Находим минимальную стоимость в этом столбце
+        let minCost = Infinity;
+        for (let i=0;i<m;i++) {
+          if (supplies[i] > 0 && balancedCosts[i][j] < minCost) {
+            minCost = balancedCosts[i][j];
+          }
+        }
+        // Если этот столбец имеет меньшую минимальную стоимость, выбираем его
+        if (minCost < bestMinCost) {
+          bestMinCost = minCost;
+          chosenBy = "col";
+          bestIdx = j;
+        }
+      }
+    }
+    
     if (bestIdx < 0) break;
 
     // внутри выбранной строки/столбца берем ячейку с МИНИМАЛЬНОЙ стоимостью
@@ -150,12 +192,12 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
 
 /* ====================== дефолтные данные задания ====================== */
 const defaultCosts = [
-  [2, 3, 8, 7],
-  [ 2, 0, 7, 3],
-  [ 5, 7, 5, 8],
+  [10, 7, 6, 8],
+  [ 5, 6, 5, 4],
+  [ 8, 7, 6, 7],
 ];
-const defaultSupplies = [70, 10, 80];
-const defaultDemands  = [60, 40, 40, 20];
+const defaultSupplies = [31, 48, 38];
+const defaultDemands  = [22, 34, 41, 20];
 
 /* ============================== компонент ============================== */
 export default function VogelStepper() {
@@ -647,9 +689,18 @@ export default function VogelStepper() {
           </span>
         </div>
         <div className="text-[10px] sm:text-xs leading-relaxed">
-          Формат ячеек: <strong>остаток/штраф</strong>. Максимальный штраф отмечен буквой <strong>R</strong>.
-          Штраф — разница между двумя минимальными тарифами в строке (для A) или столбце (для B).
-          Выбирается максимальный штраф, затем в соответствующей строке/столбце — минимальный тариф.
+          <div className="mb-2">
+            Формат ячеек: <strong>остаток/штраф</strong>. Максимальный штраф отмечен буквой <strong>R</strong>.
+          </div>
+          <div className="mb-2">
+            <strong>Алгоритм метода Фогеля:</strong>
+          </div>
+          <ol className="list-decimal list-inside space-y-1 ml-2">
+            <li>Для каждой строки и столбца вычисляется <strong>штраф</strong> — разница между двумя минимальными тарифами.</li>
+            <li>Выбирается <strong>максимальный штраф</strong>. Если несколько штрафов одинаковы, выбирается тот, где минимальная стоимость перевозки наименьшая.</li>
+            <li>В выбранной строке/столбце заполняется ячейка с <strong>минимальным тарифом</strong>.</li>
+            <li>Процесс повторяется до полного распределения всех запасов и потребностей.</li>
+          </ol>
           {!isBalanced && (
             <div className="mt-2 text-amber-700 font-medium">
               ℹ️ Задача несбалансирована — автоматически добавлены фиктивные элементы с нулевыми тарифами для балансировки.
