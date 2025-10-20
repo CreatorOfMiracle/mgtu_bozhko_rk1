@@ -2,10 +2,10 @@ import React, { useMemo, useState } from "react";
 
 /* =================== маленькие компоненты ячеек =================== */
 const Th = ({ extra = "", children = null }: { extra?: string; children?: any }) => (
-  <th className={`px-2 py-2 text-center border ${extra}`}>{children}</th>
+  <th className={`px-1 sm:px-2 py-1 sm:py-2 text-center border text-xs sm:text-sm ${extra}`}>{children}</th>
 );
 const Td = ({ extra = "", children = null }: { extra?: string; children?: any }) => (
-  <td className={`px-2 py-2 text-center border ${extra}`}>{children}</td>
+  <td className={`px-1 sm:px-2 py-1 sm:py-2 text-center border text-xs sm:text-sm ${extra}`}>{children}</td>
 );
 
 /* ======================= Helpers для римских цифр ======================= */
@@ -176,15 +176,15 @@ export default function VogelStepper() {
   };
 
   return (
-    <div className="p-3 max-w-[1400px] mx-auto">
-      <h1 className="text-xl font-bold mb-3">Метод Фогеля — пошагово</h1>
+    <div className="p-2 sm:p-3 max-w-[1400px] mx-auto">
+      <h1 className="text-lg sm:text-xl font-bold mb-3">Метод Фогеля — пошагово</h1>
 
       {/* Панель ввода */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+      <div className="grid grid-cols-1 gap-3 mb-3">
         <div className="border rounded p-3 bg-white">
-          <div className="font-semibold mb-2">Размеры</div>
-          <div className="flex gap-3 items-end">
-            <div>
+          <div className="font-semibold mb-2 text-sm sm:text-base">Размеры</div>
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+            <div className="flex-1">
               <label className="block text-xs mb-1">Поставщики (m)</label>
               <input type="number" min={1} value={m}
                 onChange={e=>{
@@ -194,9 +194,9 @@ export default function VogelStepper() {
                   setSupplies(prev=>Array.from({length:mm},(_,i)=>prev[i] ?? 0));
                   setSteps([]); setCursor(0);
                 }}
-                className="border rounded px-2 py-1 w-20"/>
+                className="border rounded px-2 py-1 w-full sm:w-20"/>
             </div>
-            <div>
+            <div className="flex-1">
               <label className="block text-xs mb-1">Потребители (n)</label>
               <input type="number" min={1} value={n}
                 onChange={e=>{
@@ -206,35 +206,35 @@ export default function VogelStepper() {
                   setDemands(prev=>Array.from({length:nn},(_,j)=>prev[j] ?? 0));
                   setSteps([]); setCursor(0);
                 }}
-                className="border rounded px-2 py-1 w-20"/>
+                className="border rounded px-2 py-1 w-full sm:w-20"/>
             </div>
-            <button onClick={resetAll} className="ml-auto px-3 py-1 border rounded hover:bg-gray-50">Сброс</button>
+            <button onClick={resetAll} className="w-full sm:w-auto px-3 py-1 border rounded hover:bg-gray-50">Сброс</button>
           </div>
         </div>
 
         <div className="border rounded p-3 bg-white">
-          <div className="font-semibold mb-2">Запасы Aᵢ</div>
-          <div className="flex flex-wrap gap-2">
+          <div className="font-semibold mb-2 text-sm sm:text-base">Запасы Aᵢ</div>
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
             {supplies.map((v,i)=>(
               <div key={`A-${i}`} className="flex items-center gap-1">
-                <span className="text-xs text-gray-600 w-6">A{i+1}</span>
+                <span className="text-xs text-gray-600 w-6 shrink-0">A{i+1}</span>
                 <input type="number" value={v}
                   onChange={e=>{ const next=supplies.slice(); next[i]=+e.target.value||0; setSupplies(next); setSteps([]); }}
-                  className="border rounded px-2 py-1 w-20"/>
+                  className="border rounded px-2 py-1 w-full sm:w-20"/>
               </div>
             ))}
           </div>
         </div>
 
         <div className="border rounded p-3 bg-white">
-          <div className="font-semibold mb-2">Потребности Bⱼ</div>
-          <div className="flex flex-wrap gap-2">
+          <div className="font-semibold mb-2 text-sm sm:text-base">Потребности Bⱼ</div>
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
             {demands.map((v,j)=>(
               <div key={`B-${j}`} className="flex items-center gap-1">
-                <span className="text-xs text-gray-600 w-6">B{j+1}</span>
+                <span className="text-xs text-gray-600 w-6 shrink-0">B{j+1}</span>
                 <input type="number" value={v}
                   onChange={e=>{ const next=demands.slice(); next[j]=+e.target.value||0; setDemands(next); setSteps([]); }}
-                  className="border rounded px-2 py-1 w-20"/>
+                  className="border rounded px-2 py-1 w-full sm:w-20"/>
               </div>
             ))}
           </div>
@@ -243,8 +243,8 @@ export default function VogelStepper() {
 
       {/* Тарифы */}
       <div className="border rounded p-3 bg-white mb-3 overflow-x-auto">
-        <div className="font-semibold mb-2">Тарифы cᵢⱼ</div>
-        <table className="border-collapse min-w-full">
+        <div className="font-semibold mb-2 text-sm sm:text-base">Тарифы cᵢⱼ</div>
+        <table className="border-collapse min-w-full text-xs sm:text-sm">
           <thead>
             <tr>
               <Th extra="bg-gray-50"></Th>
@@ -265,7 +265,7 @@ export default function VogelStepper() {
                         next[i][j]=+e.target.value||0;
                         setCosts(next); setSteps([]); setCursor(0);
                       }}
-                      className="border rounded px-2 py-1 w-20 text-center"
+                      className="border rounded px-1 sm:px-2 py-1 w-14 sm:w-20 text-center text-xs sm:text-sm"
                     />
                   </td>
                 ))}
@@ -276,20 +276,22 @@ export default function VogelStepper() {
       </div>
 
       {/* Кнопки расчёта и навигации */}
-      <div className="flex flex-wrap gap-2 items-center mb-3">
-        <button onClick={recompute} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center mb-3">
+        <button onClick={recompute} className="w-full sm:w-auto px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm sm:text-base">
           Рассчитать (Фогель)
         </button>
-        <button disabled={!canPrev} onClick={()=>setCursor(c=>Math.max(0,c-1))}
-          className={`px-3 py-2 rounded border ${canPrev? "hover:bg-gray-50":"opacity-50 cursor-not-allowed"}`}>
-          ← Назад
-        </button>
-        <button disabled={!canNext} onClick={()=>setCursor(c=>Math.min(steps.length-1,c+1))}
-          className={`px-3 py-2 rounded border ${canNext? "hover:bg-gray-50":"opacity-50 cursor-not-allowed"}`}>
-          Далее →
-        </button>
+        <div className="flex gap-2">
+          <button disabled={!canPrev} onClick={()=>setCursor(c=>Math.max(0,c-1))}
+            className={`flex-1 sm:flex-none px-3 py-2 rounded border text-sm sm:text-base ${canPrev? "hover:bg-gray-50":"opacity-50 cursor-not-allowed"}`}>
+            ← Назад
+          </button>
+          <button disabled={!canNext} onClick={()=>setCursor(c=>Math.min(steps.length-1,c+1))}
+            className={`flex-1 sm:flex-none px-3 py-2 rounded border text-sm sm:text-base ${canNext? "hover:bg-gray-50":"opacity-50 cursor-not-allowed"}`}>
+            Далее →
+          </button>
+        </div>
         {current && (
-          <div className="ml-2 text-sm text-gray-700">
+          <div className="w-full sm:w-auto sm:ml-2 text-xs sm:text-sm text-gray-700 p-2 sm:p-0 bg-gray-50 sm:bg-transparent rounded sm:rounded-none">
             Шаг <b>{current.stepIndex}</b> / {steps.length}: выбрано <b>S{current.i+1}→T{current.j+1}</b>, отгрузка <b>{current.placed}</b>, R=<b>{current.chosenBy==="row" ? current.rowPen[current.i] : current.colPen[current.j]}</b>, Z=<b>{current.totalCost}</b>
             {cursor === steps.length - 1 && <span className="ml-2 text-green-600 font-semibold">✓ Завершено</span>}
           </div>
@@ -298,13 +300,13 @@ export default function VogelStepper() {
 
       {/* Таблица остатков по шагам (комбинированная как в коде 2) */}
       {steps.length > 0 && (
-        <div className="border rounded p-3 bg-white mb-3 overflow-x-auto">
-          <div className="font-semibold mb-3">
+        <div className="border rounded p-2 sm:p-3 bg-white mb-3 overflow-x-auto">
+          <div className="font-semibold mb-3 text-sm sm:text-base">
             {cursor === 0 && steps.length > 0 
               ? "Таблица начальных остатков и штрафов" 
               : `Таблица остатков и штрафов по шагам (до шага ${current?.stepIndex || 1})`}
           </div>
-          <table className="border-collapse border-2 border-gray-800 min-w-full">
+          <table className="border-collapse border-2 border-gray-800 min-w-full text-xs sm:text-sm">
             <thead>
               <tr>
                 <Th extra="bg-gray-100 font-bold">Фогель</Th>
@@ -322,9 +324,9 @@ export default function VogelStepper() {
                     const placed = current?.alloc?.[i]?.[j] ?? { x: 0 };
                     const isActive = !!current && current.i === i && current.j === j;
                     return (
-                      <td key={`allocation-cell-${i}-${j}`} className={`relative px-2 py-2 text-center border border-gray-400 ${isActive?"bg-yellow-200" : "bg-white"}`}>
-                        <div className="absolute right-1 top-1 text-[10px] text-gray-500">c={costs[i][j]}</div>
-                        <div className="font-semibold text-lg">{placed.x > 0 ? placed.x : ""}</div>
+                      <td key={`allocation-cell-${i}-${j}`} className={`relative px-1 sm:px-2 py-1 sm:py-2 text-center border border-gray-400 ${isActive?"bg-yellow-200" : "bg-white"}`}>
+                        <div className="absolute right-0.5 sm:right-1 top-0.5 sm:top-1 text-[8px] sm:text-[10px] text-gray-500">c={costs[i][j]}</div>
+                        <div className="font-semibold text-sm sm:text-lg">{placed.x > 0 ? placed.x : ""}</div>
                       </td>
                     );
                   })}
@@ -403,9 +405,9 @@ export default function VogelStepper() {
 
       {/* Итоговая матрица — только на последнем шаге */}
       {current && cursor === steps.length-1 && (
-        <div className="border rounded p-3 bg-white mt-3 overflow-x-auto">
-          <div className="font-semibold mb-2">Итоговый опорный план (после последнего шага)</div>
-          <table className="border-collapse min-w-full border-2">
+        <div className="border rounded p-2 sm:p-3 bg-white mt-3 overflow-x-auto">
+          <div className="font-semibold mb-2 text-sm sm:text-base">Итоговый опорный план (после последнего шага)</div>
+          <table className="border-collapse min-w-full border-2 text-xs sm:text-sm">
             <thead>
               <tr>
                 <Th extra="bg-gray-100"></Th>
@@ -420,9 +422,9 @@ export default function VogelStepper() {
                   {Array.from({length:n},(_,j)=>{
                     const cell = current.alloc[i][j];
                     return (
-                      <td key={`fc-${i}-${j}`} className="relative border px-2 py-3 text-center">
-                        <div className="absolute right-1 top-1 text-[10px] text-gray-500">c={costs[i][j]}</div>
-                        <div className="text-lg font-semibold">{cell.x>0 ? cell.x : ""}</div>
+                      <td key={`fc-${i}-${j}`} className="relative border px-1 sm:px-2 py-2 sm:py-3 text-center">
+                        <div className="absolute right-0.5 sm:right-1 top-0.5 sm:top-1 text-[8px] sm:text-[10px] text-gray-500">c={costs[i][j]}</div>
+                        <div className="text-sm sm:text-lg font-semibold">{cell.x>0 ? cell.x : ""}</div>
                       </td>
                     );
                   })}
@@ -445,22 +447,22 @@ export default function VogelStepper() {
       )}
 
       {/* Легенда */}
-      <div className="text-xs text-gray-500 mt-3">
-        <div className="flex flex-wrap gap-4 mb-2">
+      <div className="text-[10px] sm:text-xs text-gray-500 mt-3 px-1 sm:px-0">
+        <div className="flex flex-wrap gap-2 sm:gap-4 mb-2">
           <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-yellow-200 border border-gray-300"></span>
-            Текущая ячейка
+            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-yellow-200 border border-gray-300 shrink-0"></span>
+            <span className="text-[10px] sm:text-xs">Текущая ячейка</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-yellow-50 border border-gray-300"></span>
-            Начальные запасы/потребности
+            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-yellow-50 border border-gray-300 shrink-0"></span>
+            <span className="text-[10px] sm:text-xs">Начальные запасы/потребности</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-blue-50 border border-gray-300"></span>
-            Римские цифры - номера итераций
+            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-50 border border-gray-300 shrink-0"></span>
+            <span className="text-[10px] sm:text-xs">Римские цифры - номера итераций</span>
           </span>
         </div>
-        <div>
+        <div className="text-[10px] sm:text-xs leading-relaxed">
           Формат ячеек: <strong>остаток/штраф</strong>. Максимальный штраф отмечен буквой <strong>R</strong>.
           Штраф — разница между двумя минимальными тарифами в строке (для A) или столбце (для B).
           Выбирается максимальный штраф, затем в соответствующей строке/столбце — минимальный тариф.
