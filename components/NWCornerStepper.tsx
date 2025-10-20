@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from "react";
 
 /* =================== маленькие компоненты ячеек =================== */
-const Th = ({ extra = "", children }) => (
+const Th = ({ extra = "", children = null }: { extra?: string; children?: any }) => (
   <th className={`px-2 py-2 text-center border ${extra}`}>{children}</th>
 );
-const Td = ({ extra = "", children }) => (
+const Td = ({ extra = "", children = null }: { extra?: string; children?: any }) => (
   <td className={`px-2 py-2 text-center border ${extra}`}>{children}</td>
 );
 
@@ -288,16 +288,20 @@ export default function VogelStepper() {
       </div>
 
       {/* Таблица остатков по шагам (комбинированная как в коде 2) */}
-      {steps.length > 0 && current && (
+      {steps.length > 0 && (
         <div className="border rounded p-3 bg-white mb-3 overflow-x-auto">
-          <div className="font-semibold mb-3">Таблица остатков и штрафов по шагам (до шага {current.stepIndex})</div>
+          <div className="font-semibold mb-3">
+            {cursor === 0 && steps.length > 0 
+              ? "Таблица начальных остатков и штрафов" 
+              : `Таблица остатков и штрафов по шагам (до шага ${current?.stepIndex || 1})`}
+          </div>
           <table className="border-collapse border-2 border-gray-800 min-w-full">
             <thead>
               <tr>
                 <Th extra="bg-gray-100 font-bold">Фогель</Th>
                 {demandLabels.map((b, j) => <Th extra="bg-gray-100" key={`th-demand-${j}`}>{b}</Th>)}
                 <Th extra="bg-gray-100 font-bold">A</Th>
-                {Array.from({ length: cursor + 1 }, (_, k) => <Th extra="bg-blue-50" key={`th-roman-${k}`}>A{k + 1}</Th>)}
+                {cursor > 0 && Array.from({ length: cursor }, (_, k) => <Th extra="bg-blue-50" key={`th-roman-${k}`}>A{k + 1}</Th>)}
               </tr>
             </thead>
             <tbody>
@@ -326,7 +330,7 @@ export default function VogelStepper() {
                     })()}
                   </Td>
                   {/* Step columns with penalties */}
-                  {Array.from({ length: cursor + 1 }, (_, k) => {
+                  {cursor > 0 && Array.from({ length: cursor }, (_, k) => {
                     const val = steps[k]?.suppliesLeft?.[i] ?? 0;
                     // Для столбца Ak нужны штрафы СЛЕДУЮЩЕГО шага (k+1), если он есть
                     const nextStep = steps[k + 1];
@@ -357,11 +361,11 @@ export default function VogelStepper() {
                   );
                 })}
                 <Td extra="bg-gray-100"></Td>
-                {Array.from({ length: cursor + 1 }, (_, k) => <Td extra="bg-gray-50" key={`b-spacer-${k}`}></Td>)}
+                {cursor > 0 && Array.from({ length: cursor }, (_, k) => <Td extra="bg-gray-50" key={`b-spacer-${k}`}></Td>)}
               </tr>
 
               {/* Demand residual rows with penalties */}
-              {Array.from({ length: cursor + 1 }, (_, k) => {
+              {cursor > 0 && Array.from({ length: cursor }, (_, k) => {
                 // Для строки Bk нужны штрафы СЛЕДУЮЩЕГО шага (k+1), если он есть
                 const nextStep = steps[k + 1];
                 return (
@@ -379,7 +383,7 @@ export default function VogelStepper() {
                       );
                     })}
                     <Td extra="bg-gray-100"></Td>
-                    {Array.from({ length: cursor + 1 }, (_, kk) => <Td extra="bg-gray-50" key={`spacer-${k}-${kk}`}></Td>)}
+                    {cursor > 0 && Array.from({ length: cursor }, (_, kk) => <Td extra="bg-gray-50" key={`spacer-${k}-${kk}`}></Td>)}
                   </tr>
                 );
               })}
