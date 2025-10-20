@@ -175,17 +175,75 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
     if (bestIdx < 0) break;
 
     // внутри выбранной строки/столбца берем ячейку с МИНИМАЛЬНОЙ стоимостью
+    // Если несколько ячеек имеют одинаковую минимальную стоимость,
+    // выбираем по максимальному штрафу пересекающегося направления
     let selI = 0, selJ = 0;
     if (chosenBy === "row") {
       selI = bestIdx;
-      let min = Infinity, arg = -1;
-      for (let j=0;j<n;j++) if (demands[j] > 0 && balancedCosts[selI][j] < min) { min = balancedCosts[selI][j]; arg = j; }
-      selJ = arg;
+      let min = Infinity;
+      const candidates: number[] = [];
+      
+      // Находим минимальную стоимость
+      for (let j=0;j<n;j++) {
+        if (demands[j] > 0 && balancedCosts[selI][j] < min) {
+          min = balancedCosts[selI][j];
+        }
+      }
+      
+      // Собираем всех кандидатов с минимальной стоимостью
+      for (let j=0;j<n;j++) {
+        if (demands[j] > 0 && balancedCosts[selI][j] === min) {
+          candidates.push(j);
+        }
+      }
+      
+      // Если несколько кандидатов, выбираем по максимальному штрафу столбца
+      if (candidates.length > 1) {
+        let maxPen = -Infinity;
+        let bestJ = candidates[0];
+        for (const j of candidates) {
+          if (colPen[j] > maxPen) {
+            maxPen = colPen[j];
+            bestJ = j;
+          }
+        }
+        selJ = bestJ;
+      } else {
+        selJ = candidates[0];
+      }
     } else {
       selJ = bestIdx;
-      let min = Infinity, arg = -1;
-      for (let i=0;i<m;i++) if (supplies[i] > 0 && balancedCosts[i][selJ] < min) { min = balancedCosts[i][selJ]; arg = i; }
-      selI = arg;
+      let min = Infinity;
+      const candidates: number[] = [];
+      
+      // Находим минимальную стоимость
+      for (let i=0;i<m;i++) {
+        if (supplies[i] > 0 && balancedCosts[i][selJ] < min) {
+          min = balancedCosts[i][selJ];
+        }
+      }
+      
+      // Собираем всех кандидатов с минимальной стоимостью
+      for (let i=0;i<m;i++) {
+        if (supplies[i] > 0 && balancedCosts[i][selJ] === min) {
+          candidates.push(i);
+        }
+      }
+      
+      // Если несколько кандидатов, выбираем по максимальному штрафу строки
+      if (candidates.length > 1) {
+        let maxPen = -Infinity;
+        let bestI = candidates[0];
+        for (const i of candidates) {
+          if (rowPen[i] > maxPen) {
+            maxPen = rowPen[i];
+            bestI = i;
+          }
+        }
+        selI = bestI;
+      } else {
+        selI = candidates[0];
+      }
     }
 
     const taken = Math.min(supplies[selI], demands[selJ]);
@@ -714,8 +772,10 @@ export default function VogelStepper() {
           </div>
           <ol className="list-decimal list-inside space-y-1 ml-2">
             <li>Для каждой строки и столбца вычисляется <strong>штраф</strong> — разница между двумя минимальными тарифами.</li>
-            <li>Выбирается <strong>максимальный штраф</strong>. Если несколько штрафов одинаковы, выбирается тот, где минимальная стоимость перевозки наименьшая. Если и минимальные стоимости равны, выбирается первый по порядку (строки имеют приоритет над столбцами).</li>
+            <li>Выбирается <strong>максимальный штраф</strong>. Если несколько штрафов одинаковы, выбирается тот, где минимальная стоимость перевозки наименьшая.</li>
+            <li>Если минимальные стоимости тоже равны, выбор производится по приоритету (строки имеют приоритет над столбцами).</li>
             <li>В выбранной строке/столбце заполняется ячейка с <strong>минимальным тарифом</strong>.</li>
+            <li>Если несколько ячеек имеют одинаковый минимальный тариф, выбирается та, которая находится в столбце/строке с <strong>максимальным штрафом пересекающегося направления</strong>.</li>
             <li>Процесс повторяется до полного распределения всех запасов и потребностей.</li>
           </ol>
           {!isBalanced && (
