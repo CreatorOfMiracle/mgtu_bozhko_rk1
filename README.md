@@ -35,4 +35,4 @@ npm start
 - Next.js
 - React
 - Tailwind CSS
-- пуп
+- вмваы
