@@ -450,9 +450,10 @@ export default function VogelStepper() {
                     {(() => {
                       const firstStep = steps[0];
                       const pen = firstStep?.rowPen?.[i];
-                      const isPenMax = isFinite(pen) && pen === Math.max(...firstStep.rowPen.filter(isFinite));
-                      const isRowChosen = firstStep?.chosenBy === "row";
-                      return `${supplies[i]}/${isFinite(pen) ? pen : "0"}${isRowChosen && isPenMax ? "R" : ""}`;
+                      const allPenalties = [...firstStep.rowPen.filter(isFinite), ...firstStep.colPen.filter(isFinite)];
+                      const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
+                      const isPenMax = isFinite(pen) && pen === maxPen;
+                      return `${supplies[i]}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`;
                     })()}
                   </Td>
                   {/* Step columns with penalties */}
@@ -461,11 +462,12 @@ export default function VogelStepper() {
                     // Для столбца Ak нужны штрафы СЛЕДУЮЩЕГО шага (k+1), если он есть
                     const nextStep = steps[k + 1];
                     const pen = nextStep?.rowPen?.[i];
-                    const isPenMax = nextStep && isFinite(pen) && pen === Math.max(...nextStep.rowPen.filter(isFinite));
-                    const isRowChosen = nextStep?.chosenBy === "row";
+                    const allPenalties = nextStep ? [...nextStep.rowPen.filter(isFinite), ...nextStep.colPen.filter(isFinite)] : [];
+                    const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
+                    const isPenMax = nextStep && isFinite(pen) && pen === maxPen;
                     return (
                       <Td extra={val === 0 ? "bg-gray-100 text-gray-400" : ""} key={`supply-res-${i}-${k}`}>
-                        {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isRowChosen && isPenMax ? "R" : ""}`}
+                        {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`}
                       </Td>
                     );
                   })}
@@ -496,20 +498,22 @@ export default function VogelStepper() {
                     {(() => {
                       const firstStep = steps[0];
                       const pen = firstStep?.rowPen?.[m];
-                      const isPenMax = isFinite(pen) && pen === Math.max(...firstStep.rowPen.filter(isFinite));
-                      const isRowChosen = firstStep?.chosenBy === "row";
-                      return `${balanceInfo.balancedSupplies[m]}/${isFinite(pen) ? pen : "0"}${isRowChosen && isPenMax ? "R" : ""}`;
+                      const allPenalties = [...firstStep.rowPen.filter(isFinite), ...firstStep.colPen.filter(isFinite)];
+                      const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
+                      const isPenMax = isFinite(pen) && pen === maxPen;
+                      return `${balanceInfo.balancedSupplies[m]}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`;
                     })()}
                   </Td>
                   {cursor > 0 && Array.from({ length: cursor }, (_, k) => {
                     const val = steps[k]?.suppliesLeft?.[m] ?? 0;
                     const nextStep = steps[k + 1];
                     const pen = nextStep?.rowPen?.[m];
-                    const isPenMax = nextStep && isFinite(pen) && pen === Math.max(...nextStep.rowPen.filter(isFinite));
-                    const isRowChosen = nextStep?.chosenBy === "row";
+                    const allPenalties = nextStep ? [...nextStep.rowPen.filter(isFinite), ...nextStep.colPen.filter(isFinite)] : [];
+                    const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
+                    const isPenMax = nextStep && isFinite(pen) && pen === maxPen;
                     return (
                       <Td extra={val === 0 ? "bg-gray-100 text-gray-400" : ""} key={`supply-res-fict-${k}`}>
-                        {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isRowChosen && isPenMax ? "R" : ""}`}
+                        {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`}
                       </Td>
                     );
                   })}
@@ -522,11 +526,12 @@ export default function VogelStepper() {
                 {demands.map((d, j) => {
                   const firstStep = steps[0];
                   const pen = firstStep?.colPen?.[j];
-                  const isPenMax = isFinite(pen) && pen === Math.max(...firstStep.colPen.filter(isFinite));
-                  const isColChosen = firstStep?.chosenBy === "col";
+                  const allPenalties = [...firstStep.rowPen.filter(isFinite), ...firstStep.colPen.filter(isFinite)];
+                  const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
+                  const isPenMax = isFinite(pen) && pen === maxPen;
                   return (
                     <Td extra="bg-yellow-50 font-semibold" key={`b-init-${j}`}>
-                      {d}/{isFinite(pen) ? pen : "0"}{isColChosen && isPenMax ? "R" : ""}
+                      {d}/{isFinite(pen) ? pen : "0"}{isPenMax ? "R" : ""}
                     </Td>
                   );
                 })}
@@ -535,9 +540,10 @@ export default function VogelStepper() {
                     {(() => {
                       const firstStep = steps[0];
                       const pen = firstStep?.colPen?.[n];
-                      const isPenMax = isFinite(pen) && pen === Math.max(...firstStep.colPen.filter(isFinite));
-                      const isColChosen = firstStep?.chosenBy === "col";
-                      return `${balanceInfo.balancedDemands[n]}/${isFinite(pen) ? pen : "0"}${isColChosen && isPenMax ? "R" : ""}`;
+                      const allPenalties = [...firstStep.rowPen.filter(isFinite), ...firstStep.colPen.filter(isFinite)];
+                      const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
+                      const isPenMax = isFinite(pen) && pen === maxPen;
+                      return `${balanceInfo.balancedDemands[n]}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`;
                     })()}
                   </Td>
                 )}
@@ -555,11 +561,12 @@ export default function VogelStepper() {
                     {demandLabels.map((_, j) => {
                       const val = steps[k]?.demandsLeft?.[j] ?? 0;
                       const pen = nextStep?.colPen?.[j];
-                      const isPenMax = nextStep && isFinite(pen) && pen === Math.max(...nextStep.colPen.filter(isFinite));
-                      const isColChosen = nextStep?.chosenBy === "col";
+                      const allPenalties = nextStep ? [...nextStep.rowPen.filter(isFinite), ...nextStep.colPen.filter(isFinite)] : [];
+                      const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
+                      const isPenMax = nextStep && isFinite(pen) && pen === maxPen;
                       return (
                         <Td extra={val === 0 ? "bg-gray-100 text-gray-400" : ""} key={`demand-res-${k}-${j}`}>
-                          {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isColChosen && isPenMax ? "R" : ""}`}
+                          {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`}
                         </Td>
                       );
                     })}
@@ -568,9 +575,10 @@ export default function VogelStepper() {
                         {(() => {
                           const val = steps[k]?.demandsLeft?.[n] ?? 0;
                           const pen = nextStep?.colPen?.[n];
-                          const isPenMax = nextStep && isFinite(pen) && pen === Math.max(...nextStep.colPen.filter(isFinite));
-                          const isColChosen = nextStep?.chosenBy === "col";
-                          return val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isColChosen && isPenMax ? "R" : ""}`;
+                          const allPenalties = nextStep ? [...nextStep.rowPen.filter(isFinite), ...nextStep.colPen.filter(isFinite)] : [];
+                          const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
+                          const isPenMax = nextStep && isFinite(pen) && pen === maxPen;
+                          return val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`;
                         })()}
                       </Td>
                     )}
