@@ -358,14 +358,16 @@ export default function VogelStepper() {
                 {row.map((val,j)=>(
                   <td key={`c-${i}-${j}`} className="border p-1">
                     <input
-                      type="number"
-                      value={val}
+                      type="text"
+                      value={val === 0 ? '' : val}
                       onChange={e=>{
                         const next=costs.map(r=>r.slice());
-                        next[i][j]=+e.target.value||0;
+                        const inputVal = e.target.value.trim();
+                        next[i][j] = inputVal === '' ? 0 : +inputVal;
                         setCosts(next); setSteps([]); setCursor(0);
                       }}
                       className="border rounded px-1 sm:px-2 py-1 w-14 sm:w-20 text-center text-xs sm:text-sm"
+                      placeholder="0"
                     />
                   </td>
                 ))}
