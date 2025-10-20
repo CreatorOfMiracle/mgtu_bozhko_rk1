@@ -107,13 +107,15 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
     // Если несколько штрафов одинаковые, выбираем тот, где минимальная стоимость меньше
     let chosenBy = "row";
     let bestIdx = -1, bestPen = -Infinity;
-    let bestMinCost = Infinity;
     
     // Сначала находим максимальный штраф
     for (let i=0;i<m;i++) if (isFinite(rowPen[i]) && rowPen[i] > bestPen) { bestPen=rowPen[i]; }
     for (let j=0;j<n;j++) if (isFinite(colPen[j]) && colPen[j] > bestPen) { bestPen=colPen[j]; }
     
-    // Теперь среди всех строк/столбцов с максимальным штрафом выбираем тот, где минимальная стоимость меньше
+    // Собираем всех кандидатов с максимальным штрафом
+    const rowCandidates: Array<{idx: number, minCost: number}> = [];
+    const colCandidates: Array<{idx: number, minCost: number}> = [];
+    
     for (let i=0;i<m;i++) {
       if (isFinite(rowPen[i]) && rowPen[i] === bestPen) {
         // Находим минимальную стоимость в этой строке
@@ -123,12 +125,7 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
             minCost = balancedCosts[i][j];
           }
         }
-        // Если эта строка имеет меньшую минимальную стоимость, выбираем её
-        if (minCost < bestMinCost) {
-          bestMinCost = minCost;
-          chosenBy = "row";
-          bestIdx = i;
-        }
+        rowCandidates.push({idx: i, minCost});
       }
     }
     
@@ -141,11 +138,36 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
             minCost = balancedCosts[i][j];
           }
         }
-        // Если этот столбец имеет меньшую минимальную стоимость, выбираем его
-        if (minCost < bestMinCost) {
-          bestMinCost = minCost;
+        colCandidates.push({idx: j, minCost});
+      }
+    }
+    
+    // Находим глобальный минимум среди всех кандидатов
+    let globalMinCost = Infinity;
+    for (const cand of rowCandidates) {
+      if (cand.minCost < globalMinCost) globalMinCost = cand.minCost;
+    }
+    for (const cand of colCandidates) {
+      if (cand.minCost < globalMinCost) globalMinCost = cand.minCost;
+    }
+    
+    // Выбираем первого кандидата с минимальной стоимостью (приоритет - строки, затем столбцы)
+    let found = false;
+    for (const cand of rowCandidates) {
+      if (cand.minCost === globalMinCost) {
+        chosenBy = "row";
+        bestIdx = cand.idx;
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found) {
+      for (const cand of colCandidates) {
+        if (cand.minCost === globalMinCost) {
           chosenBy = "col";
-          bestIdx = j;
+          bestIdx = cand.idx;
+          break;
         }
       }
     }
@@ -177,6 +199,7 @@ function computeVogelSteps(costs: number[][], s0: number[], d0: number[]) {
       stepIndex: ++step,
       i: selI, j: selJ,
       chosenBy,
+      chosenIdx: bestIdx, // индекс выбранной строки/столбца
       placed: taken,
       rowPen: rowPen.slice(),
       colPen: colPen.slice(),
@@ -210,7 +233,7 @@ export default function VogelStepper() {
   type AllocCell = { x: number; penaltyUsed?: number };
   type Step = {
     stepIndex: number;
-    i: number; j: number; chosenBy: string; placed: number;
+    i: number; j: number; chosenBy: string; chosenIdx: number; placed: number;
     rowPen: number[]; colPen: number[];
     alloc: AllocCell[][];
     suppliesLeft: number[]; demandsLeft: number[]; totalCost: number;
@@ -452,10 +475,8 @@ export default function VogelStepper() {
                     {(() => {
                       const firstStep = steps[0];
                       const pen = firstStep?.rowPen?.[i];
-                      const allPenalties = [...firstStep.rowPen.filter(isFinite), ...firstStep.colPen.filter(isFinite)];
-                      const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
-                      const isPenMax = isFinite(pen) && pen === maxPen;
-                      return `${supplies[i]}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`;
+                      const isPenChosen = firstStep && firstStep.chosenBy === "row" && firstStep.chosenIdx === i;
+                      return `${supplies[i]}/${isFinite(pen) ? pen : "0"}${isPenChosen ? "R" : ""}`;
                     })()}
                   </Td>
                   {/* Step columns with penalties */}
@@ -464,12 +485,10 @@ export default function VogelStepper() {
                     // Для столбца Ak нужны штрафы СЛЕДУЮЩЕГО шага (k+1), если он есть
                     const nextStep = steps[k + 1];
                     const pen = nextStep?.rowPen?.[i];
-                    const allPenalties = nextStep ? [...nextStep.rowPen.filter(isFinite), ...nextStep.colPen.filter(isFinite)] : [];
-                    const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
-                    const isPenMax = nextStep && isFinite(pen) && pen === maxPen;
+                    const isPenChosen = nextStep && nextStep.chosenBy === "row" && nextStep.chosenIdx === i;
                     return (
                       <Td extra={val === 0 ? "bg-gray-100 text-gray-400" : ""} key={`supply-res-${i}-${k}`}>
-                        {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`}
+                        {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenChosen ? "R" : ""}`}
                       </Td>
                     );
                   })}
@@ -500,22 +519,18 @@ export default function VogelStepper() {
                     {(() => {
                       const firstStep = steps[0];
                       const pen = firstStep?.rowPen?.[m];
-                      const allPenalties = [...firstStep.rowPen.filter(isFinite), ...firstStep.colPen.filter(isFinite)];
-                      const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
-                      const isPenMax = isFinite(pen) && pen === maxPen;
-                      return `${balanceInfo.balancedSupplies[m]}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`;
+                      const isPenChosen = firstStep && firstStep.chosenBy === "row" && firstStep.chosenIdx === m;
+                      return `${balanceInfo.balancedSupplies[m]}/${isFinite(pen) ? pen : "0"}${isPenChosen ? "R" : ""}`;
                     })()}
                   </Td>
                   {cursor > 0 && Array.from({ length: cursor }, (_, k) => {
                     const val = steps[k]?.suppliesLeft?.[m] ?? 0;
                     const nextStep = steps[k + 1];
                     const pen = nextStep?.rowPen?.[m];
-                    const allPenalties = nextStep ? [...nextStep.rowPen.filter(isFinite), ...nextStep.colPen.filter(isFinite)] : [];
-                    const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
-                    const isPenMax = nextStep && isFinite(pen) && pen === maxPen;
+                    const isPenChosen = nextStep && nextStep.chosenBy === "row" && nextStep.chosenIdx === m;
                     return (
                       <Td extra={val === 0 ? "bg-gray-100 text-gray-400" : ""} key={`supply-res-fict-${k}`}>
-                        {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`}
+                        {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenChosen ? "R" : ""}`}
                       </Td>
                     );
                   })}
@@ -528,12 +543,10 @@ export default function VogelStepper() {
                 {demands.map((d, j) => {
                   const firstStep = steps[0];
                   const pen = firstStep?.colPen?.[j];
-                  const allPenalties = [...firstStep.rowPen.filter(isFinite), ...firstStep.colPen.filter(isFinite)];
-                  const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
-                  const isPenMax = isFinite(pen) && pen === maxPen;
+                  const isPenChosen = firstStep && firstStep.chosenBy === "col" && firstStep.chosenIdx === j;
                   return (
                     <Td extra="bg-yellow-50 font-semibold" key={`b-init-${j}`}>
-                      {d}/{isFinite(pen) ? pen : "0"}{isPenMax ? "R" : ""}
+                      {d}/{isFinite(pen) ? pen : "0"}{isPenChosen ? "R" : ""}
                     </Td>
                   );
                 })}
@@ -542,10 +555,8 @@ export default function VogelStepper() {
                     {(() => {
                       const firstStep = steps[0];
                       const pen = firstStep?.colPen?.[n];
-                      const allPenalties = [...firstStep.rowPen.filter(isFinite), ...firstStep.colPen.filter(isFinite)];
-                      const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
-                      const isPenMax = isFinite(pen) && pen === maxPen;
-                      return `${balanceInfo.balancedDemands[n]}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`;
+                      const isPenChosen = firstStep && firstStep.chosenBy === "col" && firstStep.chosenIdx === n;
+                      return `${balanceInfo.balancedDemands[n]}/${isFinite(pen) ? pen : "0"}${isPenChosen ? "R" : ""}`;
                     })()}
                   </Td>
                 )}
@@ -563,12 +574,10 @@ export default function VogelStepper() {
                     {demandLabels.map((_, j) => {
                       const val = steps[k]?.demandsLeft?.[j] ?? 0;
                       const pen = nextStep?.colPen?.[j];
-                      const allPenalties = nextStep ? [...nextStep.rowPen.filter(isFinite), ...nextStep.colPen.filter(isFinite)] : [];
-                      const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
-                      const isPenMax = nextStep && isFinite(pen) && pen === maxPen;
+                      const isPenChosen = nextStep && nextStep.chosenBy === "col" && nextStep.chosenIdx === j;
                       return (
                         <Td extra={val === 0 ? "bg-gray-100 text-gray-400" : ""} key={`demand-res-${k}-${j}`}>
-                          {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`}
+                          {val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenChosen ? "R" : ""}`}
                         </Td>
                       );
                     })}
@@ -577,10 +586,8 @@ export default function VogelStepper() {
                         {(() => {
                           const val = steps[k]?.demandsLeft?.[n] ?? 0;
                           const pen = nextStep?.colPen?.[n];
-                          const allPenalties = nextStep ? [...nextStep.rowPen.filter(isFinite), ...nextStep.colPen.filter(isFinite)] : [];
-                          const maxPen = allPenalties.length > 0 ? Math.max(...allPenalties) : -Infinity;
-                          const isPenMax = nextStep && isFinite(pen) && pen === maxPen;
-                          return val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenMax ? "R" : ""}`;
+                          const isPenChosen = nextStep && nextStep.chosenBy === "col" && nextStep.chosenIdx === n;
+                          return val === 0 ? "0" : `${val}/${isFinite(pen) ? pen : "0"}${isPenChosen ? "R" : ""}`;
                         })()}
                       </Td>
                     )}
@@ -707,7 +714,7 @@ export default function VogelStepper() {
           </div>
           <ol className="list-decimal list-inside space-y-1 ml-2">
             <li>Для каждой строки и столбца вычисляется <strong>штраф</strong> — разница между двумя минимальными тарифами.</li>
-            <li>Выбирается <strong>максимальный штраф</strong>. Если несколько штрафов одинаковы, выбирается тот, где минимальная стоимость перевозки наименьшая.</li>
+            <li>Выбирается <strong>максимальный штраф</strong>. Если несколько штрафов одинаковы, выбирается тот, где минимальная стоимость перевозки наименьшая. Если и минимальные стоимости равны, выбирается первый по порядку (строки имеют приоритет над столбцами).</li>
             <li>В выбранной строке/столбце заполняется ячейка с <strong>минимальным тарифом</strong>.</li>
             <li>Процесс повторяется до полного распределения всех запасов и потребностей.</li>
           </ol>
