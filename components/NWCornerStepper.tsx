@@ -542,16 +542,16 @@ export default function HungarianAlgorithm() {
   };
   
   return (
-    <div className="p-2 sm:p-3 max-w-[1400px] mx-auto">
-      <h1 className="text-lg sm:text-xl font-bold mb-3">Венгерский алгоритм — пошагово</h1>
+    <div className="p-2 sm:p-3 md:p-4 max-w-[1400px] mx-auto">
+      <h1 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3">Венгерский алгоритм — пошагово</h1>
       
       {/* Панель ввода */}
-      <div className="grid grid-cols-1 gap-3 mb-3">
-        <div className="border rounded p-3 bg-white">
-          <div className="font-semibold mb-2 text-sm sm:text-base">Размер матрицы</div>
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+      <div className="grid grid-cols-1 gap-2 sm:gap-3 mb-2 sm:mb-3">
+        <div className="border rounded p-2 sm:p-3 bg-white">
+          <div className="font-semibold mb-2 text-xs sm:text-sm md:text-base">Размер матрицы</div>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-end">
             <div className="flex-1">
-              <label className="block text-xs mb-1">Размерность (n×n)</label>
+              <label className="block text-[10px] sm:text-xs mb-1">Размерность (n×n)</label>
               <input 
                 type="number" 
                 min={2} 
@@ -568,10 +568,10 @@ export default function HungarianAlgorithm() {
                   setSteps([]);
                   setCursor(0);
                 }}
-                className="border rounded px-2 py-1 w-full sm:w-20"
+                className="border rounded px-2 py-1 w-full sm:w-20 text-sm"
               />
             </div>
-            <button onClick={resetAll} className="w-full sm:w-auto px-3 py-1 border rounded hover:bg-gray-50">
+            <button onClick={resetAll} className="w-full sm:w-auto px-3 py-1.5 sm:py-1 border rounded hover:bg-gray-50 text-xs sm:text-sm">
               Сброс
             </button>
           </div>
@@ -579,39 +579,41 @@ export default function HungarianAlgorithm() {
       </div>
       
       {/* Матрица стоимостей */}
-      <div className="border rounded p-3 bg-white mb-3 overflow-x-auto">
-        <div className="font-semibold mb-2 text-sm sm:text-base">Матрица стоимостей</div>
-        <table className="border-collapse min-w-full text-xs sm:text-sm">
-          <tbody>
-            {matrix.map((row, i) => (
-              <tr key={`r-${i}`}>
-                {row.map((val, j) => (
-                  <td key={`c-${i}-${j}`} className="border p-1">
-                    <input
-                      type="number"
-                      value={val}
-                      onChange={e => {
-                        const next = matrix.map(r => r.slice());
-                        next[i][j] = +e.target.value || 0;
-                        setMatrix(next);
-                        setSteps([]);
-                        setCursor(0);
-                      }}
-                      className="border rounded px-1 sm:px-2 py-1 w-14 sm:w-16 text-center text-xs sm:text-sm"
-                    />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="border rounded p-2 sm:p-3 bg-white mb-2 sm:mb-3 overflow-x-auto">
+        <div className="font-semibold mb-2 text-xs sm:text-sm md:text-base">Матрица стоимостей</div>
+        <div className="overflow-x-auto -mx-2 sm:mx-0">
+          <table className="border-collapse min-w-full text-[10px] sm:text-xs md:text-sm mx-auto">
+            <tbody>
+              {matrix.map((row, i) => (
+                <tr key={`r-${i}`}>
+                  {row.map((val, j) => (
+                    <td key={`c-${i}-${j}`} className="border p-0.5 sm:p-1">
+                      <input
+                        type="number"
+                        value={val}
+                        onChange={e => {
+                          const next = matrix.map(r => r.slice());
+                          next[i][j] = +e.target.value || 0;
+                          setMatrix(next);
+                          setSteps([]);
+                          setCursor(0);
+                        }}
+                        className="border rounded px-1 sm:px-2 py-0.5 sm:py-1 w-10 sm:w-14 md:w-16 text-center text-[10px] sm:text-xs md:text-sm"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       
       {/* Кнопки расчёта и навигации */}
-      <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center mb-3">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center mb-2 sm:mb-3">
         <button 
           onClick={recompute} 
-          className="w-full sm:w-auto px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm sm:text-base"
+          className="w-full sm:w-auto px-3 sm:px-4 py-1.5 sm:py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs sm:text-sm md:text-base font-medium"
         >
           Рассчитать
         </button>
@@ -619,7 +621,7 @@ export default function HungarianAlgorithm() {
           <button 
             disabled={!canPrev} 
             onClick={() => setCursor(c => Math.max(0, c - 1))}
-            className={`flex-1 sm:flex-none px-3 py-2 rounded border text-sm sm:text-base ${
+            className={`flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-2 rounded border text-xs sm:text-sm md:text-base ${
               canPrev ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed"
             }`}
           >
@@ -628,7 +630,7 @@ export default function HungarianAlgorithm() {
           <button 
             disabled={!canNext} 
             onClick={() => setCursor(c => Math.min(steps.length - 1, c + 1))}
-            className={`flex-1 sm:flex-none px-3 py-2 rounded border text-sm sm:text-base ${
+            className={`flex-1 sm:flex-none px-2 sm:px-3 py-1.5 sm:py-2 rounded border text-xs sm:text-sm md:text-base ${
               canNext ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed"
             }`}
           >
@@ -636,11 +638,11 @@ export default function HungarianAlgorithm() {
           </button>
         </div>
         {current && (
-          <div className="w-full sm:w-auto sm:ml-2 text-xs sm:text-sm text-gray-700 p-2 sm:p-0 bg-gray-50 sm:bg-transparent rounded sm:rounded-none">
+          <div className="w-full sm:w-auto sm:ml-2 text-[10px] sm:text-xs md:text-sm text-gray-700 p-2 sm:p-1.5 md:p-0 bg-gray-50 sm:bg-transparent rounded sm:rounded-none">
             <b>Шаг {current.stepIndex}</b> / {steps.length}
-            {current.iterationNumber && <span className="ml-2 text-purple-600">| Итерация {current.iterationNumber}</span>}
-            <span className="ml-2">| {current.phase}</span>
-            {cursor === steps.length - 1 && <span className="ml-2 text-green-600 font-semibold">✓ Завершено</span>}
+            {current.iterationNumber && <span className="ml-1 sm:ml-2 text-purple-600">| Итерация {current.iterationNumber}</span>}
+            <span className="ml-1 sm:ml-2">| {current.phase}</span>
+            {cursor === steps.length - 1 && <span className="ml-1 sm:ml-2 text-green-600 font-semibold">✓ Завершено</span>}
           </div>
         )}
       </div>
@@ -650,18 +652,18 @@ export default function HungarianAlgorithm() {
         <>
           {/* Заголовок итерации */}
           {current.iterationNumber && (
-            <div className="border-2 border-purple-400 rounded p-2 bg-purple-50 mb-3">
-              <div className="font-bold text-base sm:text-lg text-purple-700">
+            <div className="border-2 border-purple-400 rounded p-1.5 sm:p-2 bg-purple-50 mb-2 sm:mb-3">
+              <div className="font-bold text-sm sm:text-base md:text-lg text-purple-700">
                 ИТЕРАЦИЯ {current.iterationNumber}
               </div>
             </div>
           )}
           
-          <div className="border rounded p-3 bg-blue-50 mb-3">
-            <div className="font-semibold text-sm mb-1">Описание шага:</div>
-            <div className="text-xs sm:text-sm">{current.description}</div>
+          <div className="border rounded p-2 sm:p-3 bg-blue-50 mb-2 sm:mb-3">
+            <div className="font-semibold text-xs sm:text-sm mb-1">Описание шага:</div>
+            <div className="text-[10px] sm:text-xs md:text-sm">{current.description}</div>
             {current.reductionValues && (
-              <div className="text-xs mt-2">
+              <div className="text-[10px] sm:text-xs mt-1 sm:mt-2">
                 Вычтенные значения: [{current.reductionValues.join(', ')}]
               </div>
             )}
@@ -671,44 +673,45 @@ export default function HungarianAlgorithm() {
       
       {/* Текущая матрица */}
       {current && (
-        <div className="border rounded p-3 bg-white mb-3 overflow-x-auto">
-          <div className="font-semibold mb-2 text-sm sm:text-base">
+        <div className="border rounded p-2 sm:p-3 bg-white mb-2 sm:mb-3">
+          <div className="font-semibold mb-2 text-xs sm:text-sm md:text-base">
             Матрица на шаге {current.stepIndex}
           </div>
-          <table className="border-collapse border-2 border-gray-800 min-w-full text-xs sm:text-sm">
-            <thead>
-              <tr>
-                <Th extra="bg-gray-100"></Th>
-                {Array.from({ length: n }, (_, j) => {
-                  const transferredIndex = current.transferredCols.indexOf(j);
-                  const transferredNumber = transferredIndex >= 0 ? current.transferredColsNumbers?.[transferredIndex] : null;
-                  
-                  return (
-                    <Th 
-                      key={`h-${j}`} 
-                      extra={`bg-gray-100 relative ${current.markedCols[j] ? 'bg-yellow-200' : ''}`}
-                    >
-                      {j + 1}
-                      {current.markedCols[j] && (
-                        <div className="absolute top-0 right-1 text-red-600 font-bold">+</div>
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <table className="border-collapse border-2 border-gray-800 min-w-full text-[10px] sm:text-xs md:text-sm mx-auto">
+              <thead>
+                <tr>
+                  <Th extra="bg-gray-100"></Th>
+                  {Array.from({ length: n }, (_, j) => {
+                    const transferredIndex = current.transferredCols.indexOf(j);
+                    const transferredNumber = transferredIndex >= 0 ? current.transferredColsNumbers?.[transferredIndex] : null;
+                    
+                    return (
+                      <Th 
+                        key={`h-${j}`} 
+                        extra={`bg-gray-100 relative ${current.markedCols[j] ? 'bg-yellow-200' : ''}`}
+                      >
+                        {j + 1}
+                        {current.markedCols[j] && (
+                          <div className="absolute top-0 right-0.5 sm:right-1 text-red-600 font-bold text-xs sm:text-sm">+</div>
+                        )}
+                        {transferredNumber && (
+                          <div className="absolute top-0 left-0.5 sm:left-1 text-blue-600 font-bold text-[8px] sm:text-xs">[+{transferredNumber}]</div>
+                        )}
+                      </Th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {current.matrix.map((row, i) => (
+                  <tr key={`r-${i}`}>
+                    <Td extra={`bg-gray-100 font-semibold relative ${current.markedRows[i] ? 'bg-yellow-200' : ''}`}>
+                      {i + 1}
+                      {current.markedRows[i] && (
+                        <div className="absolute top-0 right-0.5 sm:right-1 text-red-600 font-bold text-xs sm:text-sm">+</div>
                       )}
-                      {transferredNumber && (
-                        <div className="absolute top-0 left-1 text-blue-600 font-bold text-xs">[+{transferredNumber}]</div>
-                      )}
-                    </Th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {current.matrix.map((row, i) => (
-                <tr key={`r-${i}`}>
-                  <Td extra={`bg-gray-100 font-semibold relative ${current.markedRows[i] ? 'bg-yellow-200' : ''}`}>
-                    {i + 1}
-                    {current.markedRows[i] && (
-                      <div className="absolute top-0 right-1 text-red-600 font-bold">+</div>
-                    )}
-                  </Td>
+                    </Td>
                   {row.map((val, j) => {
                     const mark = current.marks[i][j];
                     const isInCycle = current.cyclePositions?.some(([ci, cj]) => ci === i && cj === j);
@@ -719,14 +722,14 @@ export default function HungarianAlgorithm() {
                     return (
                       <td 
                         key={`c-${i}-${j}`} 
-                        className={`relative border px-2 py-3 text-center ${
+                        className={`relative border px-1 sm:px-2 py-2 sm:py-3 text-center ${
                           isSelected ? 'bg-orange-200' :
                           isInCycle ? 'bg-green-200' :
                           isCrossed ? 'bg-gray-200 line-through' : 
                           val === 0 ? 'bg-blue-50' : 'bg-white'
                         }`}
                       >
-                        <div className="text-sm sm:text-base font-medium">
+                        <div className="text-xs sm:text-sm md:text-base font-medium">
                           {val}
                           {mark === 'independent' && <span className="text-red-600 font-bold">*</span>}
                           {mark === 'dependent' && dependentNumber && <span className="text-blue-600 font-bold">'{dependentNumber}</span>}
@@ -739,22 +742,23 @@ export default function HungarianAlgorithm() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
       
       {/* Итоговое решение */}
       {current && cursor === steps.length - 1 && (
-        <div className="border rounded p-3 bg-green-50 mb-3">
-          <div className="font-semibold text-sm sm:text-base mb-2">Итоговое решение:</div>
-          <div className="text-xs sm:text-sm mb-2">
+        <div className="border rounded p-2 sm:p-3 bg-green-50 mb-2 sm:mb-3">
+          <div className="font-semibold text-xs sm:text-sm md:text-base mb-2">Итоговое решение:</div>
+          <div className="text-[10px] sm:text-xs md:text-sm mb-2">
             Назначения (строка → столбец):
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1 sm:gap-2 mb-2 sm:mb-3">
             {current.marks.map((row, i) => {
               const j = row.findIndex(m => m === 'independent');
               if (j !== -1) {
                 return (
-                  <div key={`assign-${i}`} className="text-xs sm:text-sm">
+                  <div key={`assign-${i}`} className="text-[10px] sm:text-xs md:text-sm">
                     Строка {i + 1} → Столбец {j + 1} (стоимость: {matrix[i][j]})
                   </div>
                 );
@@ -762,37 +766,37 @@ export default function HungarianAlgorithm() {
               return null;
             })}
           </div>
-          <div className="font-semibold text-base sm:text-lg text-green-700">
+          <div className="font-semibold text-sm sm:text-base md:text-lg text-green-700">
             Общая минимальная стоимость: {calculateTotalCost()}
           </div>
         </div>
       )}
       
       {/* Легенда */}
-      <div className="text-[10px] sm:text-xs text-gray-500 mt-3 px-1 sm:px-0">
-        <div className="flex flex-wrap gap-2 sm:gap-4 mb-2">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-50 border border-gray-300 shrink-0 inline-block"></span>
+      <div className="text-[9px] sm:text-[10px] md:text-xs text-gray-500 mt-2 sm:mt-3 px-1 sm:px-0">
+        <div className="flex flex-wrap gap-1 sm:gap-2 md:gap-4 mb-1 sm:mb-2">
+          <span className="flex items-center gap-0.5 sm:gap-1">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 bg-blue-50 border border-gray-300 shrink-0 inline-block"></span>
             Нулевая клетка
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-yellow-200 border border-gray-300 shrink-0 inline-block"></span>
+          <span className="flex items-center gap-0.5 sm:gap-1">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 bg-yellow-200 border border-gray-300 shrink-0 inline-block"></span>
             Помеченная линия (+)
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-200 border border-gray-300 shrink-0 inline-block"></span>
+          <span className="flex items-center gap-0.5 sm:gap-1">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 bg-gray-200 border border-gray-300 shrink-0 inline-block"></span>
             Зачеркнутая клетка
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-green-200 border border-gray-300 shrink-0 inline-block"></span>
+          <span className="flex items-center gap-0.5 sm:gap-1">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 bg-green-200 border border-gray-300 shrink-0 inline-block"></span>
             Клетка в цикле
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-orange-200 border border-gray-300 shrink-0 inline-block"></span>
+          <span className="flex items-center gap-0.5 sm:gap-1">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 bg-orange-200 border border-gray-300 shrink-0 inline-block"></span>
             Выбранная клетка
           </span>
         </div>
-        <div className="flex flex-wrap gap-2 sm:gap-4">
+        <div className="flex flex-wrap gap-1 sm:gap-2 md:gap-4">
           <span>0* — независимый ноль</span>
           <span>0' — зависимый ноль</span>
           <span>+ — помеченная линия</span>
