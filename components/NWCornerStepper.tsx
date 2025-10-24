@@ -16,12 +16,16 @@ type MarkMatrix = CellMark[][];
 
 interface Step {
   stepIndex: number;
+  iterationNumber?: number; // номер итерации (1, 2, 3...)
+  subStepNumber?: number; // номер подшага внутри A1 (1, 2, 3...)
   phase: 'reduction_col' | 'reduction_row' | 'A0' | 'A1' | 'A2' | 'A3';
   matrix: Matrix;
   marks: MarkMatrix;
   markedCols: boolean[];
   markedRows: boolean[];
   transferredCols: number[]; // столбцы, откуда перенесли +
+  transferredColsNumbers?: number[]; // номера подшагов для переносов
+  dependentZeroNumbers?: Map<string, number>; // карта "i,j" -> номер подшага для зависимых нулей
   description: string;
   reductionValues?: number[]; // для фазы редукции
   cyclePositions?: [number, number][]; // для фазы А2
@@ -241,21 +245,25 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
     const markedCols = phaseA0(currentMatrix, currentMarks);
     steps.push({
       stepIndex: ++stepIndex,
+      iterationNumber: iterationCount,
       phase: 'A0',
       matrix: currentMatrix.map(row => [...row]),
       marks: currentMarks.map(row => [...row]),
       markedCols: [...markedCols],
       markedRows: Array(n).fill(false),
       transferredCols: [],
-      description: 'A0: Помечаем столбцы (+) с независимыми нулями (0*)',
+      description: `Итерация ${iterationCount} - A0: Помечаем столбцы (+) с независимыми нулями (0*)`,
     });
     
     // Фаза A1
     let markedRows = Array(n).fill(false);
     let transferredCols: number[] = [];
+    let transferredColsNumbers: number[] = [];
+    let dependentZeroNumbers = new Map<string, number>(); // карта для отслеживания номеров зависимых нулей
     let phaseA1Active = true;
     let foundDependentWithoutIndependent = false;
     let lastDependentCell: [number, number] | null = null;
+    let a1SubStep = 0; // счётчик подшагов внутри A1
     
     while (phaseA1Active) {
       const zeroPos = findFirstUncrossedZero(currentMatrix, currentMarks, markedCols, markedRows);
@@ -264,13 +272,14 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
         // Все независимые 0 в зачеркнутых линиях -> A3
         steps.push({
           stepIndex: ++stepIndex,
+          iterationNumber: iterationCount,
           phase: 'A1',
           matrix: currentMatrix.map(row => [...row]),
           marks: currentMarks.map(row => [...row]),
           markedCols: [...markedCols],
           markedRows: [...markedRows],
           transferredCols: [...transferredCols],
-          description: 'A1: Все нули просмотрены, все независимые нули в зачеркнутых линиях → переход к A3',
+          description: `Итерация ${iterationCount} - A1: Все нули просмотрены, все независимые нули в зачеркнутых линиях → переход к A3`,
         });
         
         // Фаза A3
@@ -305,36 +314,46 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
         
         steps.push({
           stepIndex: ++stepIndex,
+          iterationNumber: iterationCount,
           phase: 'A3',
           matrix: currentMatrix.map(row => [...row]),
           marks: currentMarks.map(row => [...row]),
           markedCols: [...markedCols],
           markedRows: [...markedRows],
           transferredCols: [],
-          description: `A3: Вычитаем минимум (${minVal}) из незачеркнутых клеток, прибавляем к пересечениям зачеркнутых линий → возврат к A1`,
+          description: `Итерация ${iterationCount} - A3: Вычитаем минимум (${minVal}) из незачеркнутых клеток, прибавляем к пересечениям зачеркнутых линий → возврат к A1`,
           minValueA3: minVal,
         });
         
-        phaseA1Active = false;
-        break;
+        // После A3 продолжаем A1 с теми же метками (не выходим из цикла, не сбрасываем метки)
+        // phaseA1Active остается true, markedCols и markedRows сохраняются
+        continue;
       }
       
       const [zeroRow, zeroCol] = zeroPos;
       
+      // Увеличиваем счётчик подшагов A1
+      a1SubStep++;
+      
       // Сначала сохраняем шаг с выбранной клеткой, но ещё без метки
       steps.push({
         stepIndex: ++stepIndex,
+        iterationNumber: iterationCount,
+        subStepNumber: a1SubStep,
         phase: 'A1',
         matrix: currentMatrix.map(row => [...row]),
         marks: currentMarks.map(row => [...row]),
         markedCols: [...markedCols],
         markedRows: [...markedRows],
         transferredCols: [...transferredCols],
-        description: `A1: Выбран незачеркнутый ноль в [${zeroRow + 1}, ${zeroCol + 1}]`,
+        transferredColsNumbers: [...transferredColsNumbers],
+        dependentZeroNumbers: new Map(dependentZeroNumbers),
+        description: `Итерация ${iterationCount} - A1.${a1SubStep}: Выбран незачеркнутый ноль в [${zeroRow + 1}, ${zeroCol + 1}]`,
         selectedCell: [zeroRow, zeroCol],
       });
       
       currentMarks[zeroRow][zeroCol] = 'dependent';
+      dependentZeroNumbers.set(`${zeroRow},${zeroCol}`, a1SubStep);
       
       const independentCol = findIndependentInRow(currentMarks, zeroRow);
       
@@ -345,13 +364,17 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
         
         steps.push({
           stepIndex: ++stepIndex,
+          iterationNumber: iterationCount,
+          subStepNumber: a1SubStep,
           phase: 'A1',
           matrix: currentMatrix.map(row => [...row]),
           marks: currentMarks.map(row => [...row]),
           markedCols: [...markedCols],
           markedRows: [...markedRows],
           transferredCols: [...transferredCols],
-          description: `A1: Помечен зависимый ноль (0') в [${zeroRow + 1}, ${zeroCol + 1}], независимого нуля в строке нет → переход к A2`,
+          transferredColsNumbers: [...transferredColsNumbers],
+          dependentZeroNumbers: new Map(dependentZeroNumbers),
+          description: `Итерация ${iterationCount} - A1.${a1SubStep}: Помечен зависимый ноль (0'${a1SubStep}) в [${zeroRow + 1}, ${zeroCol + 1}], независимого нуля в строке нет → переход к A2`,
           selectedCell: [zeroRow, zeroCol],
         });
         
@@ -363,16 +386,21 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
       markedCols[independentCol] = false;
       markedRows[zeroRow] = true;
       transferredCols.push(independentCol);
+      transferredColsNumbers.push(a1SubStep);
       
       steps.push({
         stepIndex: ++stepIndex,
+        iterationNumber: iterationCount,
+        subStepNumber: a1SubStep,
         phase: 'A1',
         matrix: currentMatrix.map(row => [...row]),
         marks: currentMarks.map(row => [...row]),
         markedCols: [...markedCols],
         markedRows: [...markedRows],
         transferredCols: [...transferredCols],
-        description: `A1: Помечен зависимый ноль (0') в [${zeroRow + 1}, ${zeroCol + 1}], переносим + со столбца ${independentCol + 1} на строку ${zeroRow + 1}`,
+        transferredColsNumbers: [...transferredColsNumbers],
+        dependentZeroNumbers: new Map(dependentZeroNumbers),
+        description: `Итерация ${iterationCount} - A1.${a1SubStep}: Помечен зависимый ноль (0'${a1SubStep}) в [${zeroRow + 1}, ${zeroCol + 1}], переносим + со столбца ${independentCol + 1} на строку ${zeroRow + 1}`,
         selectedCell: [zeroRow, zeroCol],
       });
     }
@@ -383,13 +411,14 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
       
       steps.push({
         stepIndex: ++stepIndex,
+        iterationNumber: iterationCount,
         phase: 'A2',
         matrix: currentMatrix.map(row => [...row]),
         marks: currentMarks.map(row => [...row]),
         markedCols: [...markedCols],
         markedRows: [...markedRows],
         transferredCols: [],
-        description: `A2: Найден цикл, меняем зависимые (0') на независимые (0*) и наоборот`,
+        description: `Итерация ${iterationCount} - A2: Найден цикл, меняем зависимые (0') на независимые (0*) и наоборот`,
         cyclePositions: cycle,
       });
       
@@ -425,13 +454,14 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
       
       steps.push({
         stepIndex: ++stepIndex,
+        iterationNumber: iterationCount,
         phase: 'A2',
         matrix: currentMatrix.map(row => [...row]),
         marks: currentMarks.map(row => [...row]),
         markedCols: Array(n).fill(false),
         markedRows: Array(n).fill(false),
         transferredCols: [],
-        description: 'A2: Метки изменены, возврат к A0',
+        description: `Итерация ${iterationCount} - A2: Метки изменены, возврат к A0`,
         cyclePositions: cycle,
       });
     }
@@ -443,6 +473,7 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
       
       steps.push({
         stepIndex: ++stepIndex,
+        iterationNumber: iterationCount,
         phase: 'A0',
         matrix: currentMatrix.map(row => [...row]),
         marks: currentMarks.map(row => [...row]),
@@ -600,7 +631,9 @@ export default function HungarianAlgorithm() {
         </div>
         {current && (
           <div className="w-full sm:w-auto sm:ml-2 text-xs sm:text-sm text-gray-700 p-2 sm:p-0 bg-gray-50 sm:bg-transparent rounded sm:rounded-none">
-            <b>Шаг {current.stepIndex}</b> / {steps.length}: {current.phase}
+            <b>Шаг {current.stepIndex}</b> / {steps.length}
+            {current.iterationNumber && <span className="ml-2 text-purple-600">| Итерация {current.iterationNumber}</span>}
+            <span className="ml-2">| {current.phase}</span>
             {cursor === steps.length - 1 && <span className="ml-2 text-green-600 font-semibold">✓ Завершено</span>}
           </div>
         )}
@@ -608,15 +641,26 @@ export default function HungarianAlgorithm() {
       
       {/* Описание текущего шага */}
       {current && (
-        <div className="border rounded p-3 bg-blue-50 mb-3">
-          <div className="font-semibold text-sm mb-1">Описание шага:</div>
-          <div className="text-xs sm:text-sm">{current.description}</div>
-          {current.reductionValues && (
-            <div className="text-xs mt-2">
-              Вычтенные значения: [{current.reductionValues.join(', ')}]
+        <>
+          {/* Заголовок итерации */}
+          {current.iterationNumber && (
+            <div className="border-2 border-purple-400 rounded p-2 bg-purple-50 mb-3">
+              <div className="font-bold text-base sm:text-lg text-purple-700">
+                ИТЕРАЦИЯ {current.iterationNumber}
+              </div>
             </div>
           )}
-        </div>
+          
+          <div className="border rounded p-3 bg-blue-50 mb-3">
+            <div className="font-semibold text-sm mb-1">Описание шага:</div>
+            <div className="text-xs sm:text-sm">{current.description}</div>
+            {current.reductionValues && (
+              <div className="text-xs mt-2">
+                Вычтенные значения: [{current.reductionValues.join(', ')}]
+              </div>
+            )}
+          </div>
+        </>
       )}
       
       {/* Текущая матрица */}
@@ -629,20 +673,25 @@ export default function HungarianAlgorithm() {
             <thead>
               <tr>
                 <Th extra="bg-gray-100"></Th>
-                {Array.from({ length: n }, (_, j) => (
-                  <Th 
-                    key={`h-${j}`} 
-                    extra={`bg-gray-100 relative ${current.markedCols[j] ? 'bg-yellow-200' : ''}`}
-                  >
-                    {j + 1}
-                    {current.markedCols[j] && (
-                      <div className="absolute top-0 right-1 text-red-600 font-bold">+</div>
-                    )}
-                    {current.transferredCols.includes(j) && (
-                      <div className="absolute top-0 left-1 text-blue-600 font-bold text-xs">[+]</div>
-                    )}
-                  </Th>
-                ))}
+                {Array.from({ length: n }, (_, j) => {
+                  const transferredIndex = current.transferredCols.indexOf(j);
+                  const transferredNumber = transferredIndex >= 0 ? current.transferredColsNumbers?.[transferredIndex] : null;
+                  
+                  return (
+                    <Th 
+                      key={`h-${j}`} 
+                      extra={`bg-gray-100 relative ${current.markedCols[j] ? 'bg-yellow-200' : ''}`}
+                    >
+                      {j + 1}
+                      {current.markedCols[j] && (
+                        <div className="absolute top-0 right-1 text-red-600 font-bold">+</div>
+                      )}
+                      {transferredNumber && (
+                        <div className="absolute top-0 left-1 text-blue-600 font-bold text-xs">[+{transferredNumber}]</div>
+                      )}
+                    </Th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -659,6 +708,7 @@ export default function HungarianAlgorithm() {
                     const isInCycle = current.cyclePositions?.some(([ci, cj]) => ci === i && cj === j);
                     const isSelected = current.selectedCell?.[0] === i && current.selectedCell?.[1] === j;
                     const isCrossed = current.markedCols[j] || current.markedRows[i];
+                    const dependentNumber = current.dependentZeroNumbers?.get(`${i},${j}`);
                     
                     return (
                       <td 
@@ -673,7 +723,8 @@ export default function HungarianAlgorithm() {
                         <div className="text-sm sm:text-base font-medium">
                           {val}
                           {mark === 'independent' && <span className="text-red-600 font-bold">*</span>}
-                          {mark === 'dependent' && <span className="text-blue-600 font-bold">'</span>}
+                          {mark === 'dependent' && dependentNumber && <span className="text-blue-600 font-bold">'{dependentNumber}</span>}
+                          {mark === 'dependent' && !dependentNumber && <span className="text-blue-600 font-bold">'</span>}
                         </div>
                       </td>
                     );
