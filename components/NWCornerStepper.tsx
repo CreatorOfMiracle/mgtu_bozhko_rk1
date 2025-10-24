@@ -325,6 +325,12 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
           minValueA3: minVal,
         });
         
+        // После A3 сбрасываем счётчик подшагов A1, карту зависимых нулей и перенесенные +
+        a1SubStep = 0;
+        dependentZeroNumbers.clear();
+        transferredCols = [];
+        transferredColsNumbers = [];
+        
         // После A3 продолжаем A1 с теми же метками (не выходим из цикла, не сбрасываем метки)
         // phaseA1Active остается true, markedCols и markedRows сохраняются
         continue;
