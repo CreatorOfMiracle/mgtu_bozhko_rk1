@@ -138,42 +138,43 @@ function findCycle(
   const cycle: [number, number][] = [[startRow, startCol]];
   let currentRow = startRow;
   let currentCol = startCol;
-  let lookingForIndependent = true;
+  let searchingVertical = true; // Начинаем с поиска по вертикали (ищем независимый 0)
   
   const n = matrix.length;
   const maxIterations = n * n * 2;
   let iterations = 0;
   
   while (iterations++ < maxIterations) {
-    if (lookingForIndependent) {
-      // Ищем независимый 0 по вертикали
+    if (searchingVertical) {
+      // Ищем независимый 0 строго по вертикали (в том же столбце)
       let found = false;
       for (let i = 0; i < n; i++) {
         if (i === currentRow) continue;
         if (marks[i][currentCol] === 'independent') {
           currentRow = i;
           cycle.push([i, currentCol]);
-          lookingForIndependent = false;
+          searchingVertical = false; // Следующий шаг - поиск по горизонтали
           found = true;
           break;
         }
       }
       if (!found) break;
     } else {
-      // Ищем зависимый 0 по горизонтали
+      // Ищем зависимый 0 строго по горизонтали (в той же строке)
       let found = false;
       for (let j = 0; j < n; j++) {
         if (j === currentCol) continue;
         if (marks[currentRow][j] === 'dependent') {
           currentCol = j;
           cycle.push([currentRow, j]);
-          lookingForIndependent = true;
-          found = true;
           
           // Проверяем, вернулись ли к началу
           if (currentRow === startRow && currentCol === startCol) {
             return cycle;
           }
+          
+          searchingVertical = true; // Следующий шаг - поиск по вертикали
+          found = true;
           break;
         }
       }
