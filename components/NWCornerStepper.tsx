@@ -495,18 +495,40 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
 }
 
 /* ============================== дефолтные данные ============================== */
-const defaultMatrix = [
-  [4, 3, 8, 2, 8],
-  [9, 3, 1, 3, 4],
-  [1, 7, 1, 4, 7],
-  [2, 3, 8, 9, 6],
-  [6, 4, 3, 6, 6],
-];
+const predefinedMatrices: { [key: string]: Matrix } = {
+  'H01': [[21, 22, 3, 9, 10], [20, 21, 2, 8, 9], [15, 16, 2, 3, 4], [11, 12, 17, 23, 24], [10, 11, 16, 2, 3]],
+  'H02': [[23, 24, 5, 9, 10], [22, 23, 4, 8, 9], [17, 18, 3, 3, 4], [11, 12, 17, 1, 2], [10, 11, 16, 0, 1]],
+  'H03': [[7, 2, 1, 9, 4], [9, 6, 9, 5, 5], [3, 8, 3, 1, 8], [7, 9, 4, 2, 2], [8, 4, 7, 4, 8]],
+  'H04': [[5, 7, 6, 9, 5], [6, 7, 6, 2, 7], [8, 9, 13, 10, 10], [5, 7, 6, 4, 8], [6, 7, 8, 5, 9]],
+  'H05': [[2, 10, 9, 7, 2], [15, 4, 14, 8, 2], [13, 14, 10, 9, 6], [4, 6, 13, 19, 5], [6, 5, 9, 9, 10]],
+  'H06': [[7, 3, 5, 5, 2], [2, 6, 3, 1, 5], [6, 9, 2, 2, 2], [7, 3, 2, 4, 4], [5, 4, 5, 4, 6]],
+  'H07': [[21, 22, 3, 4, 10], [20, 21, 2, 8, 9], [15, 16, 2, 6, 8], [10, 11, 17, 23, 4], [10, 11, 16, 3, 23]],
+  'H08': [[23, 24, 5, 9, 10], [22, 23, 4, 8, 9], [10, 18, 21, 3, 4], [11, 11, 17, 21, 22], [10, 11, 16, 20, 21]],
+  'H09': [[1, 2, 1, 3, 1], [2, 2, 2, 1, 3], [1, 1, 1, 3, 4], [1, 1, 3, 5, 4], [4, 2, 2, 1, 3]],
+  'H10': [[10, 5, 9, 18, 11], [13, 19, 6, 12, 14], [3, 2, 4, 4, 5], [18, 9, 12, 17, 15], [11, 6, 14, 19, 10]],
+  'H11': [[10, 5, 9, 18, 11], [13, 19, 6, 12, 14], [3, 2, 4, 4, 5], [18, 9, 12, 17, 15], [11, 6, 14, 19, 12]],
+  'H12': [[9, 20, 60, 15, 21], [38, 71, 69, 49, 60], [28, 13, 80, 28, 34], [58, 34, 13, 15, 25], [30, 3, 53, 20, 26]],
+  'H13': [[2, 4, 2, 2, 4], [4, 2, 3, 4, 3], [4, 3, 1, 1, 1], [3, 1, 2, 2, 2], [1, 3, 1, 2, 4]],
+  'H14': [[3, 2, 4, 1, 2], [3, 2, 3, 1, 3], [4, 1, 1, 4, 1], [2, 2, 4, 2, 1], [3, 2, 4, 3, 4]],
+  'H15': [[12, 14, 12, 18, 14], [16, 10, 10, 16, 12], [10, 8, 8, 12, 10], [8, 12, 16, 14, 16], [10, 16, 18, 16, 16]],
+  'H16': [[17, 12, 11, 19, 14], [19, 16, 19, 15, 15], [13, 18, 13, 11, 18], [17, 19, 14, 12, 12], [18, 14, 17, 14, 18]],
+  'H17': [[11, 12, 11, 13, 11], [12, 12, 12, 11, 13], [11, 11, 11, 13, 14], [11, 11, 13, 15, 14], [14, 12, 12, 11, 13]],
+  'H18': [[23, 12, 24, 21, 12], [23, 12, 23, 21, 13], [24, 11, 21, 24, 11], [22, 12, 24, 23, 11], [23, 12, 24, 23, 14]],
+  'H19': [[8, 7, 3, 9, 7], [4, 9, 8, 5, 2], [5, 2, 1, 7, 1], [4, 2, 1, 7, 9], [8, 5, 1, 6, 4]],
+  'H20': [[6, 4, 9, 13, 10], [14, 10, 5, 11, 6], [9, 15, 12, 9, 14], [12, 18, 8, 14, 11], [8, 13, 16, 7, 16]],
+  'H21': [[5, 1, 4, 8, 2], [1, 3, 5, 2, 3], [9, 9, 3, 1, 8], [2, 2, 4, 5, 6], [4, 8, 9, 6, 7]],
+  'H22': [[3, 1, 2, 3, 4], [2, 4, 4, 3, 2], [4, 3, 4, 1, 4], [5, 6, 4, 1, 4], [2, 1, 5, 1, 7]],
+  'H23': [[1, 2, 1, 3, 1], [2, 2, 1, 1, 2], [1, 2, 2, 3, 2], [3, 1, 3, 5, 4], [2, 3, 4, 4, 3]],
+  'H24': [[5, 3, 2, 2, 3], [3, 2, 1, 4, 2], [1, 1, 1, 3, 4], [3, 3, 4, 1, 1], [4, 3, 1, 1, 2]],
+};
+
+const defaultMatrix = predefinedMatrices['H01'];
 
 /* ============================== компонент ============================== */
 export default function HungarianAlgorithm() {
   const [n, setN] = useState(5);
   const [matrix, setMatrix] = useState<Matrix>(defaultMatrix);
+  const [selectedVariant, setSelectedVariant] = useState('H01');
   
   const [steps, setSteps] = useState<Step[]>([]);
   const [cursor, setCursor] = useState(0);
@@ -523,9 +545,21 @@ export default function HungarianAlgorithm() {
   
   const resetAll = () => {
     setN(5);
-    setMatrix(defaultMatrix);
+    setSelectedVariant('H01');
+    setMatrix(predefinedMatrices['H01']);
     setSteps([]);
     setCursor(0);
+  };
+  
+  const handleVariantChange = (variant: string) => {
+    setSelectedVariant(variant);
+    const newMatrix = predefinedMatrices[variant];
+    if (newMatrix) {
+      setN(newMatrix.length);
+      setMatrix(newMatrix);
+      setSteps([]);
+      setCursor(0);
+    }
   };
   
   const calculateTotalCost = () => {
@@ -548,8 +582,20 @@ export default function HungarianAlgorithm() {
       {/* Панель ввода */}
       <div className="grid grid-cols-1 gap-2 sm:gap-3 mb-2 sm:mb-3">
         <div className="border rounded p-2 sm:p-3 bg-white">
-          <div className="font-semibold mb-2 text-xs sm:text-sm md:text-base">Размер матрицы</div>
+          <div className="font-semibold mb-2 text-xs sm:text-sm md:text-base">Выбор варианта</div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-end">
+            <div className="flex-1">
+              <label className="block text-[10px] sm:text-xs mb-1">Вариант задания</label>
+              <select 
+                value={selectedVariant}
+                onChange={e => handleVariantChange(e.target.value)}
+                className="border rounded px-2 py-1 w-full text-sm"
+              >
+                {Object.keys(predefinedMatrices).map(key => (
+                  <option key={key} value={key}>{key}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex-1">
               <label className="block text-[10px] sm:text-xs mb-1">Размерность (n×n)</label>
               <input 
