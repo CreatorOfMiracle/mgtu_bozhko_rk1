@@ -425,7 +425,7 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
         markedCols: [...markedCols],
         markedRows: [...markedRows],
         transferredCols: [],
-        description: `Итерация ${iterationCount} - A2: Найден цикл, меняем зависимые (0') на независимые (0*) и наоборот`,
+        description: `Итерация ${iterationCount} - A2: Найден цикл, возврат к A0 следующей итерации для изменения меток`,
         cyclePositions: cycle,
       });
       
@@ -458,19 +458,6 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
           }
         }
       }
-      
-      steps.push({
-        stepIndex: ++stepIndex,
-        iterationNumber: iterationCount,
-        phase: 'A2',
-        matrix: currentMatrix.map(row => [...row]),
-        marks: currentMarks.map(row => [...row]),
-        markedCols: Array(n).fill(false),
-        markedRows: Array(n).fill(false),
-        transferredCols: [],
-        description: `Итерация ${iterationCount} - A2: Метки изменены, возврат к A0`,
-        cyclePositions: cycle,
-      });
     }
     
     // Проверяем, достигли ли мы решения
@@ -478,16 +465,32 @@ function computeHungarianSteps(initialMatrix: Matrix): Step[] {
     if (independentCount === n) {
       continueIterations = false;
       
+      // Добавляем следующую итерацию, чтобы показать финальное состояние после A2
+      const nextIterationCount = iterationCount + 1;
+      const finalMarkedCols = phaseA0(currentMatrix, currentMarks);
+      
       steps.push({
         stepIndex: ++stepIndex,
-        iterationNumber: iterationCount,
+        iterationNumber: nextIterationCount,
         phase: 'A0',
         matrix: currentMatrix.map(row => [...row]),
         marks: currentMarks.map(row => [...row]),
+        markedCols: [...finalMarkedCols],
+        markedRows: Array(n).fill(false),
+        transferredCols: [],
+        description: `Итерация ${nextIterationCount} - A0: Помечаем столбцы (+) с независимыми нулями (0*). Решение найдено! Все ${n} назначений выполнены (${n} независимых нулей).`,
+      });
+      
+      // Добавляем финальный шаг с исходной матрицей и выбором оптимальных назначений
+      steps.push({
+        stepIndex: ++stepIndex,
+        phase: 'A0',
+        matrix: initialMatrix.map(row => [...row]), // исходная матрица
+        marks: currentMarks.map(row => [...row]), // метки независимых нулей
         markedCols: Array(n).fill(false),
         markedRows: Array(n).fill(false),
         transferredCols: [],
-        description: `Решение найдено! Все ${n} назначений выполнены (${n} независимых нулей).`,
+        description: `Финальное решение: Исходная матрица с отмеченными оптимальными назначениями (0*)`,
       });
     }
   }
@@ -818,6 +821,46 @@ export default function HungarianAlgorithm() {
           </div>
         </div>
       )}
+      
+      {/* Описание алгоритма */}
+      <div className="border rounded p-2 sm:p-3 bg-blue-50 mt-2 sm:mt-3 mb-2 sm:mb-3">
+        <div className="font-semibold text-xs sm:text-sm md:text-base mb-2">Описание венгерского алгоритма:</div>
+        <div className="text-[9px] sm:text-[10px] md:text-xs space-y-1 sm:space-y-2">
+          <div>
+            <strong>Подготовка:</strong>
+            <ol className="list-decimal ml-4 sm:ml-5 mt-1">
+              <li>Редукция по столбцам: вычитаем минимум из каждого столбца</li>
+              <li>Редукция по строкам: вычитаем минимум из каждой строки</li>
+              <li>Помечаем начальные независимые нули (0*) — по одному на строку и столбец</li>
+            </ol>
+          </div>
+          
+          <div>
+            <strong>Итерация (повторяется до нахождения решения):</strong>
+            <ol className="list-decimal ml-4 sm:ml-5 mt-1">
+              <li><strong>A0:</strong> Помечаем столбцы (+), содержащие независимые нули (0*)</li>
+              <li><strong>A1:</strong> Ищем незачеркнутые нули в самом левом незачеркнутом столбце:
+                <ul className="list-disc ml-4 sm:ml-5 mt-0.5">
+                  <li>Помечаем найденный ноль как зависимый (0')</li>
+                  <li>Если в этой строке есть независимый ноль (0*), переносим + со столбца на строку</li>
+                  <li>Если независимого нуля нет → переход к A2</li>
+                  <li>Если все независимые нули зачеркнуты → переход к A3</li>
+                </ul>
+              </li>
+              <li><strong>A2:</strong> Строим цикл (последовательно по вертикали и горизонтали), меняем зависимые (0') на независимые (0*) и наоборот. Убираем остальные зависимые нули. → Возврат к A0</li>
+              <li><strong>A3:</strong> Находим минимум среди незачеркнутых клеток, вычитаем его из незачеркнутых клеток, прибавляем к клеткам на пересечении зачеркнутых линий. → Возврат к A1</li>
+            </ol>
+          </div>
+          
+          <div>
+            <strong>Окончание итерации:</strong> Итерация заканчивается после фазы A2 (возврат к A0 следующей итерации) или когда найдено n независимых нулей (решение найдено).
+          </div>
+          
+          <div>
+            <strong>Решение:</strong> Когда количество независимых нулей (0*) равно n, алгоритм завершён. Позиции независимых нулей указывают оптимальные назначения с минимальной суммарной стоимостью.
+          </div>
+        </div>
+      </div>
       
       {/* Легенда */}
       <div className="text-[9px] sm:text-[10px] md:text-xs text-gray-500 mt-2 sm:mt-3 px-1 sm:px-0">
