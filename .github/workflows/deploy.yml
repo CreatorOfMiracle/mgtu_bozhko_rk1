@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:  # 👈 добавляем возможность ручного запуска
+    inputs:
+      ref:
+        description: "Commit SHA или ветка для деплоя"
+        required: false
+        default: "main"
 
 permissions:
   contents: read
@@ -17,6 +23,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}  # 👈 берём коммит из ручного ввода
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
