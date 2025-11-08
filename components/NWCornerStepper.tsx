@@ -403,8 +403,9 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
   });
   
   let currentMatrix = reduced.map(row => [...row]);
-  let iterationCount = 0;
+  let iterationCount = 1; // Начинаем с итерации 1
   const maxIterations = 20;
+  let skipOperation4 = false; // Флаг для пропуска операции 4 после операции 7
   
   // Построение графа смежности (только в начале)
   let zeroEdges = findZeroEdges(currentMatrix);
@@ -420,12 +421,13 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
   // Начинаем итерации
   let matching = findMaxMatching(currentMatrix);
   
-  while (iterationCount < maxIterations) {
+  while (iterationCount <= maxIterations) {
     // Обновляем zeroEdges для текущей матрицы
     zeroEdges = findZeroEdges(currentMatrix);
     
-    // Операция 4: Проверка мощности паросочетания
-    if (matching.length === n) {
+    // Операция 4: Проверка мощности паросочетания (пропускаем после операции 7)
+    if (!skipOperation4) {
+      if (matching.length === n) {
       // Решение найдено!
       let totalCost = 0;
       for (const edge of matching) {
@@ -441,7 +443,7 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
         matching,
         isSolution: true,
         totalCost,
-        description: `Итерация ${iterationCount}. Операция 4: Проверка мощности |M| = ${matching.length} = ${n}. Паросочетание совершенно! Решение найдено.`,
+        description: `ВЫБОР. Операция 4: Проверка мощности |M| = ${matching.length} = ${n}. Паросочетание совершенно! Решение найдено.`,
       });
       
       // Финальный шаг с исходной матрицей
@@ -452,21 +454,25 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
         matching,
         isSolution: true,
         totalCost,
-        description: `Совершенное паросочетание, состоящее из нулей с минусом. Минимальная стоимость: Z* = ${totalCost}`,
+        description: `ВЫБОР. Совершенное паросочетание, состоящее из нулей с минусом. Минимальная стоимость: Z* = ${totalCost}`,
       });
       
       break;
+      }
+      
+      steps.push({
+        stepIndex: ++stepIndex,
+        iterationNumber: iterationCount,
+        phase: 'check',
+        matrix: currentMatrix.map(row => [...row]),
+        zeroEdges,
+        matching,
+        description: `Итерация ${iterationCount}. Операция 4: Подсчёт мощности паросочетания |M| = ${matching.length} < ${n}. Решение не найдено, переходим к операции 5.`,
+      });
     }
     
-    steps.push({
-      stepIndex: ++stepIndex,
-      iterationNumber: iterationCount,
-      phase: 'check',
-      matrix: currentMatrix.map(row => [...row]),
-      zeroEdges,
-      matching,
-      description: `Итерация ${iterationCount}. Операция 4: Подсчёт мощности паросочетания |M| = ${matching.length} < ${n}. Решение не найдено, переходим к операции 5.`,
-    });
+    // Сбрасываем флаг после использования
+    skipOperation4 = false;
     
     // Операция 5: Поиск аугментальной цепи
     const { xPlus, yPlus, xMinus, yMinus, xLabels, yLabels, foundUnsaturatedY, bfsSteps } = buildAugmentingSet(currentMatrix, matching);
@@ -587,7 +593,7 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
         matrix: modified,
         matching,
         h,
-        description: `Итерация ${iterationCount}. Операция 7: Матрица с изменённым составом светлых дуг. Переход к операции 4.`,
+        description: `Итерация ${iterationCount}. Операция 7: Матрица с изменённым составом светлых дуг. Переход к операции 5.`,
       });
       
       currentMatrix = modified;
@@ -595,8 +601,15 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
       // НЕ пересчитываем паросочетание - сохраняем текущее
       // matching остаётся прежним
       
-      iterationCount++;
+      // Устанавливаем флаг, чтобы пропустить операцию 4 на следующей итерации
+      skipOperation4 = true;
+      
+      // Продолжаем в той же итерации - переходим сразу к операции 5
+      continue;
     }
+    
+    // Увеличиваем счётчик итераций только после прохождения полного цикла
+    iterationCount++;
   }
   
   return steps;
@@ -905,7 +918,11 @@ export default function HungarianGraphVisualization() {
         {current && (
           <div className="text-xs text-gray-700 p-2 bg-gray-50 rounded">
             <div><b>Шаг {current.stepIndex}</b> / {steps.length}</div>
-            {current.iterationNumber && <div className="text-purple-600">Итерация {current.iterationNumber}</div>}
+            {current.iterationNumber && (
+              <div className={current.isSolution ? "text-green-600 font-semibold" : "text-purple-600"}>
+                {current.isSolution ? 'ВЫБОР' : `Итерация ${current.iterationNumber}`}
+              </div>
+            )}
             <div>Фаза: {current.phase}</div>
             {current.isSolution && <div className="text-green-600 font-semibold">✓ Решение найдено</div>}
           </div>
@@ -916,9 +933,15 @@ export default function HungarianGraphVisualization() {
       {current && (
         <>
           {current.iterationNumber && (
-            <div className="border-2 border-purple-400 rounded p-2 bg-purple-50 mb-3">
-              <div className="font-bold text-base text-purple-700">
-                ИТЕРАЦИЯ {current.iterationNumber}
+            <div className={`border-2 rounded p-2 mb-3 ${
+              current.isSolution 
+                ? 'border-green-400 bg-green-50' 
+                : 'border-purple-400 bg-purple-50'
+            }`}>
+              <div className={`font-bold text-base ${
+                current.isSolution ? 'text-green-700' : 'text-purple-700'
+              }`}>
+                {current.isSolution ? 'ВЫБОР' : `ИТЕРАЦИЯ ${current.iterationNumber}`}
               </div>
             </div>
           )}
