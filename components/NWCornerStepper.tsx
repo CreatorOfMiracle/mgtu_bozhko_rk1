@@ -617,7 +617,9 @@ const predefinedMatrices: { [key: string]: Matrix } = {
 export default function HungarianGraphVisualization() {
   const [selectedVariant, setSelectedVariant] = useState('Default');
   const [matrix, setMatrix] = useState<Matrix>(predefinedMatrices['Default']);
-  const [n, setN] = useState(5);
+  const [rows, setRows] = useState(5);
+  const [cols, setCols] = useState(5);
+  const [error, setError] = useState<string>('');
   
   const [steps, setSteps] = useState<Step[]>([]);
   const [cursor, setCursor] = useState(0);
@@ -628,6 +630,23 @@ export default function HungarianGraphVisualization() {
   const canNext = cursor < steps.length - 1;
   
   const recompute = () => {
+    // Проверяем, что матрица квадратная для венгерского алгоритма
+    if (rows !== cols) {
+      setError('Ошибка: Для венгерского алгоритма матрица должна быть квадратной (количество строк = количеству столбцов)!');
+      return;
+    }
+    
+    // Проверяем, что все клетки заполнены (не пустые и не null)
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        if (matrix[i][j] === null || matrix[i][j] === undefined || isNaN(matrix[i][j]) || matrix[i][j] === '' as any) {
+          setError('Ошибка: Не все клетки заполнены! Заполните все клетки матрицы.');
+          return;
+        }
+      }
+    }
+    
+    setError('');
     const s = computeHungarianGraphSteps(matrix);
     setSteps(s);
     setCursor(0);
@@ -637,19 +656,53 @@ export default function HungarianGraphVisualization() {
     setSelectedVariant(variant);
     const newMatrix = predefinedMatrices[variant];
     if (newMatrix) {
-      setN(newMatrix.length);
+      setRows(newMatrix.length);
+      setCols(newMatrix[0].length);
       setMatrix(newMatrix);
       setSteps([]);
       setCursor(0);
+      setError('');
     }
+  };
+  
+  const handleRowsChange = (newRows: number) => {
+    setRows(newRows);
+    // Создаём новую матрицу с новым количеством строк
+    const newMatrix: Matrix = Array.from({ length: newRows }, (_, i) => 
+      Array.from({ length: cols }, (_, j) => 
+        (matrix[i] && matrix[i][j] !== undefined) ? matrix[i][j] : null as any
+      )
+    );
+    setMatrix(newMatrix);
+    setSteps([]);
+    setCursor(0);
+    setError('');
+    setSelectedVariant('');
+  };
+  
+  const handleColsChange = (newCols: number) => {
+    setCols(newCols);
+    // Создаём новую матрицу с новым количеством столбцов
+    const newMatrix: Matrix = Array.from({ length: rows }, (_, i) => 
+      Array.from({ length: newCols }, (_, j) => 
+        (matrix[i] && matrix[i][j] !== undefined) ? matrix[i][j] : null as any
+      )
+    );
+    setMatrix(newMatrix);
+    setSteps([]);
+    setCursor(0);
+    setError('');
+    setSelectedVariant('');
   };
   
   const resetAll = () => {
     setSelectedVariant('Default');
     setMatrix(predefinedMatrices['Default']);
-    setN(5);
+    setRows(5);
+    setCols(5);
     setSteps([]);
     setCursor(0);
+    setError('');
   };
   
   return (
@@ -659,17 +712,42 @@ export default function HungarianGraphVisualization() {
       {/* Панель управления */}
       <div className="border rounded p-3 bg-white mb-3">
         <div className="flex flex-col gap-2">
-          <div className="w-full">
-            <label className="block text-xs mb-1">Выбор варианта</label>
-            <select 
-              value={selectedVariant}
-              onChange={e => handleVariantChange(e.target.value)}
-              className="border rounded px-2 py-1 w-full text-sm"
-            >
-              {Object.keys(predefinedMatrices).map(key => (
-                <option key={key} value={key}>{key}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="w-full">
+              <label className="block text-xs mb-1">Количество строк</label>
+              <input
+                type="number"
+                min="2"
+                max="10"
+                value={rows}
+                onChange={e => handleRowsChange(Math.max(2, Math.min(10, +e.target.value || 2)))}
+                className="border rounded px-2 py-1 w-full text-sm"
+              />
+            </div>
+            <div className="w-full">
+              <label className="block text-xs mb-1">Количество столбцов</label>
+              <input
+                type="number"
+                min="2"
+                max="10"
+                value={cols}
+                onChange={e => handleColsChange(Math.max(2, Math.min(10, +e.target.value || 2)))}
+                className="border rounded px-2 py-1 w-full text-sm"
+              />
+            </div>
+            <div className="w-full">
+              <label className="block text-xs mb-1">Выбор варианта</label>
+              <select 
+                value={selectedVariant}
+                onChange={e => handleVariantChange(e.target.value)}
+                className="border rounded px-2 py-1 w-full text-sm"
+              >
+                <option value="">-- Выберите вариант --</option>
+                {Object.keys(predefinedMatrices).map(key => (
+                  <option key={key} value={key}>{key}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={recompute} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium">
@@ -679,6 +757,11 @@ export default function HungarianGraphVisualization() {
               Сброс
             </button>
           </div>
+          {error && (
+            <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+              {error}
+            </div>
+          )}
           {steps.length > 0 && (
             <button 
               onClick={() => setShowFinalAnswer(!showFinalAnswer)} 
@@ -702,13 +785,21 @@ export default function HungarianGraphVisualization() {
                     <td key={j} className="border p-1">
                       <input
                         type="number"
-                        value={val}
+                        value={val === null || val === undefined ? '' : val}
+                        placeholder="-"
                         onChange={e => {
                           const next = matrix.map(r => [...r]);
-                          next[i][j] = +e.target.value || 0;
+                          const inputValue = e.target.value;
+                          if (inputValue === '') {
+                            next[i][j] = null as any;
+                          } else {
+                            const numValue = +inputValue;
+                            next[i][j] = isNaN(numValue) ? null as any : numValue;
+                          }
                           setMatrix(next);
                           setSteps([]);
                           setCursor(0);
+                          setError('');
                         }}
                         className="border rounded px-1 py-1 w-12 sm:w-16 text-center text-xs"
                       />
@@ -738,7 +829,7 @@ export default function HungarianGraphVisualization() {
                   <thead>
                     <tr>
                       <th className="border px-1 sm:px-3 py-1 sm:py-2 bg-gray-100"></th>
-                      {Array.from({ length: n }, (_, j) => (
+                      {Array.from({ length: cols }, (_, j) => (
                         <th key={j} className="border px-1 sm:px-3 py-1 sm:py-2 bg-gray-100 text-center">
                           {j + 1}
                         </th>
@@ -850,7 +941,7 @@ export default function HungarianGraphVisualization() {
                 <thead>
                   <tr>
                     <th className="border px-1 sm:px-2 py-1 bg-gray-100"></th>
-                    {Array.from({ length: n }, (_, j) => {
+                    {Array.from({ length: cols }, (_, j) => {
                       const yLabel = current.yLabels?.get(j);
                       // Зачёркнутые столбцы - это те, которых НЕТ в uncoveredCols
                       const isCrossed = current.uncoveredCols && !current.uncoveredCols.has(j);
@@ -963,8 +1054,8 @@ export default function HungarianGraphVisualization() {
             <div className="font-semibold text-sm mb-2">Двудольный граф</div>
             <svg viewBox="0 0 400 300" className="w-full h-48 sm:h-64 border">
               {/* Левая часть X (строки) */}
-              {Array.from({ length: n }, (_, i) => {
-                const y = 50 + (i * 200) / Math.max(1, n - 1);
+              {Array.from({ length: rows }, (_, i) => {
+                const y = 50 + (i * 200) / Math.max(1, rows - 1);
                 const isInXPlus = current.xPlus?.has(i);
                 const isInXMinus = current.xMinus?.has(i);
                 const xLabel = current.xLabels?.get(i);
@@ -992,8 +1083,8 @@ export default function HungarianGraphVisualization() {
               })}
               
               {/* Правая часть Y (столбцы) */}
-              {Array.from({ length: n }, (_, j) => {
-                const y = 50 + (j * 200) / Math.max(1, n - 1);
+              {Array.from({ length: cols }, (_, j) => {
+                const y = 50 + (j * 200) / Math.max(1, cols - 1);
                 const isInYPlus = current.yPlus?.has(j);
                 const isInYMinus = current.yMinus?.has(j);
                 const yLabel = current.yLabels?.get(j);
@@ -1022,8 +1113,8 @@ export default function HungarianGraphVisualization() {
               
               {/* Рёбра */}
               {current.zeroEdges?.map((edge, idx) => {
-                const y1 = 50 + (edge.row * 200) / Math.max(1, n - 1);
-                const y2 = 50 + (edge.col * 200) / Math.max(1, n - 1);
+                const y1 = 50 + (edge.row * 200) / Math.max(1, rows - 1);
+                const y2 = 50 + (edge.col * 200) / Math.max(1, cols - 1);
                 const isMatching = current.matching?.some(e => e.row === edge.row && e.col === edge.col);
                 const isInAugmentingPath = current.augmentingPath?.some(e => e.row === edge.row && e.col === edge.col);
                 
