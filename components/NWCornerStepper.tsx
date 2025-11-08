@@ -626,8 +626,8 @@ export default function HungarianGraphVisualization() {
       
       {/* Панель управления */}
       <div className="border rounded p-3 bg-white mb-3">
-        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
-          <div className="flex-1">
+        <div className="flex flex-col gap-2">
+          <div className="w-full">
             <label className="block text-xs mb-1">Выбор варианта</label>
             <select 
               value={selectedVariant}
@@ -639,28 +639,30 @@ export default function HungarianGraphVisualization() {
               ))}
             </select>
           </div>
-          <button onClick={recompute} className="px-4 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium">
-            Рассчитать
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={recompute} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium">
+              Рассчитать
+            </button>
+            <button onClick={resetAll} className="px-3 py-2 border rounded hover:bg-gray-50 text-sm">
+              Сброс
+            </button>
+          </div>
           {steps.length > 0 && (
             <button 
               onClick={() => setShowFinalAnswer(!showFinalAnswer)} 
-              className="px-4 py-1.5 rounded bg-green-600 text-white hover:bg-green-700 text-sm font-medium"
+              className="w-full px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 text-sm font-medium"
             >
               {showFinalAnswer ? 'Скрыть ответ' : 'Показать ответ'}
             </button>
           )}
-          <button onClick={resetAll} className="px-3 py-1.5 border rounded hover:bg-gray-50 text-sm">
-            Сброс
-          </button>
         </div>
       </div>
       
       {/* Матрица ввода */}
       <div className="border rounded p-3 bg-white mb-3">
         <div className="font-semibold mb-2 text-sm">Матрица стоимостей</div>
-        <div className="overflow-x-auto">
-          <table className="border-collapse text-xs">
+        <div className="overflow-x-auto -mx-3 px-3">
+          <table className="border-collapse text-xs min-w-full">
             <tbody>
               {matrix.map((row, i) => (
                 <tr key={i}>
@@ -676,7 +678,7 @@ export default function HungarianGraphVisualization() {
                           setSteps([]);
                           setCursor(0);
                         }}
-                        className="border rounded px-2 py-1 w-16 text-center text-xs"
+                        className="border rounded px-1 py-1 w-12 sm:w-16 text-center text-xs"
                       />
                     </td>
                   ))}
@@ -697,15 +699,15 @@ export default function HungarianGraphVisualization() {
           <div className="border-2 border-green-500 rounded p-4 bg-green-50 mb-3">
             <div className="font-bold text-lg mb-3 text-green-800">✓ Оптимальное решение</div>
             
-            <div className="bg-white rounded p-3 mb-3">
+            <div className="bg-white rounded p-2 sm:p-3 mb-3">
               <div className="font-semibold text-sm mb-2">Исходная матрица с выделенным решением:</div>
-              <div className="overflow-x-auto">
-                <table className="border-collapse border-2 text-sm mx-auto">
+              <div className="overflow-x-auto -mx-2 px-2">
+                <table className="border-collapse border-2 text-xs sm:text-sm mx-auto">
                   <thead>
                     <tr>
-                      <th className="border px-3 py-2 bg-gray-100"></th>
+                      <th className="border px-1 sm:px-3 py-1 sm:py-2 bg-gray-100"></th>
                       {Array.from({ length: n }, (_, j) => (
-                        <th key={j} className="border px-3 py-2 bg-gray-100 text-center">
+                        <th key={j} className="border px-1 sm:px-3 py-1 sm:py-2 bg-gray-100 text-center">
                           {j + 1}
                         </th>
                       ))}
@@ -714,14 +716,14 @@ export default function HungarianGraphVisualization() {
                   <tbody>
                     {matrix.map((row, i) => (
                       <tr key={i}>
-                        <td className="border px-3 py-2 font-semibold bg-gray-100 text-center">{i + 1}</td>
+                        <td className="border px-1 sm:px-3 py-1 sm:py-2 font-semibold bg-gray-100 text-center">{i + 1}</td>
                         {row.map((val, j) => {
                           const isInSolution = solutionStep.matching?.some(e => e.row === i && e.col === j);
                           return (
                             <td 
                               key={j}
-                              className={`border px-3 py-2 text-center font-medium ${
-                                isInSolution ? 'bg-green-300 font-bold text-lg' : 'bg-white'
+                              className={`border px-1 sm:px-3 py-1 sm:py-2 text-center font-medium ${
+                                isInSolution ? 'bg-green-300 font-bold text-base sm:text-lg' : 'bg-white'
                               }`}
                             >
                               {val}
@@ -760,27 +762,29 @@ export default function HungarianGraphVisualization() {
       })()}
       
       {/* Навигация */}
-      <div className="flex flex-wrap gap-2 items-center mb-3">
-        <button 
-          disabled={!canPrev} 
-          onClick={() => setCursor(c => Math.max(0, c - 1))}
-          className={`px-3 py-2 rounded border text-sm ${canPrev ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed"}`}
-        >
-          ← Назад
-        </button>
-        <button 
-          disabled={!canNext} 
-          onClick={() => setCursor(c => Math.min(steps.length - 1, c + 1))}
-          className={`px-3 py-2 rounded border text-sm ${canNext ? "hover:bg-gray-50" : "opacity-50 cursor-not-allowed"}`}
-        >
-          Далее →
-        </button>
+      <div className="mb-3">
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <button 
+            disabled={!canPrev} 
+            onClick={() => setCursor(c => Math.max(0, c - 1))}
+            className={`px-3 py-2 rounded border text-sm font-medium ${canPrev ? "hover:bg-gray-50 active:bg-gray-100" : "opacity-50 cursor-not-allowed"}`}
+          >
+            ← Назад
+          </button>
+          <button 
+            disabled={!canNext} 
+            onClick={() => setCursor(c => Math.min(steps.length - 1, c + 1))}
+            className={`px-3 py-2 rounded border text-sm font-medium ${canNext ? "hover:bg-gray-50 active:bg-gray-100" : "opacity-50 cursor-not-allowed"}`}
+          >
+            Далее →
+          </button>
+        </div>
         {current && (
-          <div className="text-xs text-gray-700">
-            <b>Шаг {current.stepIndex}</b> / {steps.length}
-            {current.iterationNumber && <span className="ml-2 text-purple-600">| Итерация {current.iterationNumber}</span>}
-            <span className="ml-2">| {current.phase}</span>
-            {current.isSolution && <span className="ml-2 text-green-600 font-semibold">✓ Решение найдено</span>}
+          <div className="text-xs text-gray-700 p-2 bg-gray-50 rounded">
+            <div><b>Шаг {current.stepIndex}</b> / {steps.length}</div>
+            {current.iterationNumber && <div className="text-purple-600">Итерация {current.iterationNumber}</div>}
+            <div>Фаза: {current.phase}</div>
+            {current.isSolution && <div className="text-green-600 font-semibold">✓ Решение найдено</div>}
           </div>
         )}
       </div>
@@ -807,24 +811,24 @@ export default function HungarianGraphVisualization() {
       {current && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* Матрица */}
-          <div className="border rounded p-3 bg-white">
+          <div className="border rounded p-2 sm:p-3 bg-white">
             <div className="font-semibold text-sm mb-2">Матрица (шаг {current.stepIndex})</div>
-            <div className="overflow-x-auto">
-              <table className="border-collapse border-2 text-xs mx-auto">
+            <div className="overflow-x-auto -mx-2 px-2">
+              <table className="border-collapse border-2 text-[10px] sm:text-xs mx-auto">
                 <thead>
                   <tr>
-                    <th className="border px-2 py-1 bg-gray-100"></th>
+                    <th className="border px-1 sm:px-2 py-1 bg-gray-100"></th>
                     {Array.from({ length: n }, (_, j) => {
                       const yLabel = current.yLabels?.get(j);
                       return (
                         <th 
                           key={j} 
-                          className={`border px-2 py-1 text-center relative ${
+                          className={`border px-1 sm:px-2 py-1 text-center relative ${
                             current.uncoveredCols && !current.uncoveredCols.has(j) ? 'bg-yellow-200' : 'bg-gray-100'
                           }`}
                         >
                           {yLabel && (
-                            <div className="text-purple-600 font-bold text-[10px] whitespace-nowrap mb-1">
+                            <div className="text-purple-600 font-bold text-[8px] sm:text-[10px] whitespace-nowrap mb-1">
                               [{yLabel.order}_{yLabel.parentIndex + 1}]
                             </div>
                           )}
@@ -845,12 +849,12 @@ export default function HungarianGraphVisualization() {
                     return (
                       <tr key={i}>
                         <td 
-                          className={`border px-2 py-1 font-semibold text-center ${
+                          className={`border px-1 sm:px-2 py-1 font-semibold text-center ${
                             current.uncoveredRows && !current.uncoveredRows.has(i) ? 'bg-yellow-200' : 'bg-gray-100'
                           }`}
                         >
                           {xLabel && (
-                            <div className="text-purple-600 font-bold text-[10px] whitespace-nowrap mr-1 inline-block">
+                            <div className="text-purple-600 font-bold text-[8px] sm:text-[10px] whitespace-nowrap mr-1 inline-block">
                               [{xLabel.order}_{xLabel.order === 1 && xLabel.parentIndex === 0 ? '0' : xLabel.parentIndex + 1}]
                             </div>
                           )}
@@ -890,7 +894,7 @@ export default function HungarianGraphVisualization() {
                         return (
                           <td 
                             key={j}
-                            className={`border px-2 py-2 text-center ${
+                            className={`border px-1 sm:px-2 py-1 sm:py-2 text-center ${
                               isInAugmentingPath ? 'bg-orange-300 font-bold' :
                               isMatching ? 'bg-green-200 font-bold' :
                               isZero ? 'bg-blue-50' :
@@ -898,7 +902,7 @@ export default function HungarianGraphVisualization() {
                               'bg-white'
                             }`}
                           >
-                            <div className="text-xs font-medium">
+                            <div className="text-[10px] sm:text-xs font-medium">
                               {displayValue}
                             </div>
                           </td>
@@ -919,9 +923,9 @@ export default function HungarianGraphVisualization() {
           </div>
           
           {/* Граф */}
-          <div className="border rounded p-3 bg-white">
+          <div className="border rounded p-2 sm:p-3 bg-white">
             <div className="font-semibold text-sm mb-2">Двудольный граф</div>
-            <svg viewBox="0 0 400 300" className="w-full h-64 border">
+            <svg viewBox="0 0 400 300" className="w-full h-48 sm:h-64 border">
               {/* Левая часть X (строки) */}
               {Array.from({ length: n }, (_, i) => {
                 const y = 50 + (i * 200) / Math.max(1, n - 1);
@@ -1002,15 +1006,17 @@ export default function HungarianGraphVisualization() {
               })}
             </svg>
             
-            <div className="mt-2 text-xs space-y-1">
+            <div className="mt-2 text-[10px] sm:text-xs space-y-1">
               {current.matching && (
                 <div>
                   <span className="font-semibold">Паросочетание:</span> {current.matching.length} рёбер
-                  {current.matching.map((e, i) => (
-                    <div key={i} className="ml-2 text-green-600">
-                      X{e.row + 1} → Y{e.col + 1}
-                    </div>
-                  ))}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 mt-1">
+                    {current.matching.map((e, i) => (
+                      <div key={i} className="text-green-600">
+                        X{e.row + 1} → Y{e.col + 1}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {current.xPlus && (
@@ -1033,9 +1039,9 @@ export default function HungarianGraphVisualization() {
         <div className="border rounded p-3 bg-green-50 mt-3">
           <div className="font-semibold text-base mb-2">✓ Решение найдено!</div>
           <div className="text-sm mb-2">Оптимальные назначения:</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+          <div className="space-y-1 mb-3">
             {current.matching?.map((edge, i) => (
-              <div key={i} className="text-sm">
+              <div key={i} className="text-xs sm:text-sm bg-white p-2 rounded">
                 Строка {edge.row + 1} → Столбец {edge.col + 1} 
                 {cursor === steps.length - 1 && (
                   <span className="ml-2 text-green-700 font-semibold">
@@ -1046,7 +1052,7 @@ export default function HungarianGraphVisualization() {
             ))}
           </div>
           {current.totalCost !== undefined && (
-            <div className="font-semibold text-lg text-green-700">
+            <div className="font-semibold text-base sm:text-lg text-green-700 bg-white p-2 rounded">
               Общая минимальная стоимость: {current.totalCost}
             </div>
           )}
@@ -1056,7 +1062,7 @@ export default function HungarianGraphVisualization() {
       {/* Описание алгоритма */}
       <div className="border rounded p-3 bg-blue-50 mt-3">
         <div className="font-semibold text-sm mb-2">7 шагов графовой реализации венгерского алгоритма:</div>
-        <div className="text-xs space-y-2">
+        <div className="text-[11px] sm:text-xs space-y-2">
           <div>
             <strong>Шаг 1. Редукция матрицы:</strong> Из каждой строки вычитаем минимальный элемент, затем из каждого столбца вычитаем минимальный элемент. Получаем хотя бы один ноль в каждой строке и столбце.
           </div>
@@ -1098,37 +1104,37 @@ export default function HungarianGraphVisualization() {
       </div>
       
       {/* Легенда */}
-      <div className="text-xs text-gray-500 mt-3 space-y-1">
-        <div className="flex flex-wrap gap-4">
+      <div className="text-[10px] sm:text-xs text-gray-500 mt-3 space-y-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-blue-50 border inline-block"></span>
-            Нулевая клетка
+            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-50 border inline-block flex-shrink-0"></span>
+            <span className="truncate">Нулевая клетка</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-green-200 border inline-block"></span>
-            Паросочетание *
+            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-green-200 border inline-block flex-shrink-0"></span>
+            <span className="truncate">Паросочетание *</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-orange-300 border inline-block"></span>
-            Чередующийся путь
+            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-orange-300 border inline-block flex-shrink-0"></span>
+            <span className="truncate">Чередующийся путь</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-yellow-200 border inline-block"></span>
-            Покрытая линия ✓
+            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-yellow-200 border inline-block flex-shrink-0"></span>
+            <span className="truncate">Покрытая линия ✓</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-4 h-4 bg-gray-200 border inline-block"></span>
-            Покрытая клетка
+            <span className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-200 border inline-block flex-shrink-0"></span>
+            <span className="truncate">Покрытая клетка</span>
           </span>
         </div>
-        <div className="flex flex-wrap gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <span className="flex items-center gap-1">
-            <span className="w-4 h-4 rounded-full bg-yellow-300 border-2 border-purple-500 inline-block"></span>
-            Вершина в X⁺ или Y⁺
+            <span className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-yellow-300 border-2 border-purple-500 inline-block flex-shrink-0"></span>
+            <span>Вершина в X⁺ или Y⁺</span>
           </span>
-          <span>Зелёные линии — рёбра паросочетания</span>
+          <span>Зелёные линии — паросочетание</span>
           <span>Оранжевые линии — чередующийся путь</span>
-          <span>Пунктирные линии — нулевые рёбра</span>
+          <span>Пунктир — нулевые рёбра</span>
         </div>
       </div>
     </div>
