@@ -334,32 +334,40 @@ function modifyMatrix(
 ): { modified: Matrix; h: number } {
   const n = matrix.length;
   
-  // Найти минимум среди клеток на пересечении покрытых строк и непокрытых столбцов
+  // Найти минимум h среди клеток на пересечении зачёркнутых строк и незачёркнутых столбцов
+  // uncoveredRows - это строки X+, которые НЕ зачёркнуты
+  // uncoveredCols - это столбцы Y-, которые НЕ зачёркнуты
+  // Значит зачёркнутые строки - это НЕ в uncoveredRows
+  // А зачёркнутые столбцы - это НЕ в uncoveredCols
+  
   let h = Infinity;
   for (let i = 0; i < n; i++) {
-    const rowCovered = !uncoveredRows.has(i);
-    if (!rowCovered) continue; // Пропускаем непокрытые строки
+    const rowCovered = !uncoveredRows.has(i); // зачёркнутая строка
+    if (!rowCovered) continue; // Пропускаем НЕзачёркнутые строки
+    
     for (let j = 0; j < n; j++) {
-      const colCovered = !uncoveredCols.has(j);
-      if (colCovered) continue; // Пропускаем покрытые столбцы
+      const colUncovered = uncoveredCols.has(j); // незачёркнутый столбец
+      if (!colUncovered) continue; // Пропускаем зачёркнутые столбцы
+      
+      // Это пересечение зачёркнутых строк и незачёркнутых столбцов
       if (matrix[i][j] < h) h = matrix[i][j];
     }
   }
   
   const modified = matrix.map(row => [...row]);
   
-  // Вычитаем h из клеток на пересечении покрытых строк и непокрытых столбцов
-  // Прибавляем h к клеткам на пересечении непокрытых строк и покрытых столбцов
+  // Вычитаем h из клеток на пересечении зачёркнутых строк и незачёркнутых столбцов
+  // Прибавляем h к клеткам на пересечении незачёркнутых строк и зачёркнутых столбцов
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      const rowCovered = !uncoveredRows.has(i);
-      const colCovered = !uncoveredCols.has(j);
+      const rowCovered = !uncoveredRows.has(i); // зачёркнутая строка
+      const colCovered = !uncoveredCols.has(j); // зачёркнутый столбец
       
       if (rowCovered && !colCovered) {
-        // Покрытая строка, непокрытый столбец - вычитаем h
+        // Зачёркнутая строка, незачёркнутый столбец - вычитаем h
         modified[i][j] -= h;
       } else if (!rowCovered && colCovered) {
-        // Непокрытая строка, покрытый столбец - прибавляем h
+        // Незачёркнутая строка, зачёркнутый столбец - прибавляем h
         modified[i][j] += h;
       }
     }
@@ -374,15 +382,16 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
   const n = initialMatrix.length;
   let stepIndex = 0;
   
-  // Шаг 1: Редукция
-  const { reduced, colReductions, rowReductions } = reduceMatrix(initialMatrix);
-  
+  // Предварительный этап: Исходная матрица
   steps.push({
     stepIndex: ++stepIndex,
     phase: 'reduction',
     matrix: initialMatrix.map(row => [...row]),
-    description: 'Шаг 1: Исходная матрица стоимостей',
+    description: 'Исходная матрица стоимостей',
   });
+  
+  // Предварительный этап: Редукция
+  const { reduced, colReductions, rowReductions } = reduceMatrix(initialMatrix);
   
   steps.push({
     stepIndex: ++stepIndex,
@@ -390,14 +399,14 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
     matrix: reduced,
     colReductions,
     rowReductions,
-    description: `Шаг 1: Редукция матрицы (сначала вычитаем минимумы из столбцов: [${colReductions.join(', ')}], затем из строк: [${rowReductions.join(', ')}])`,
+    description: `Редуцированная матрица (вычли из столбцов: [${colReductions.join(', ')}], из строк: [${rowReductions.join(', ')}])`,
   });
   
   let currentMatrix = reduced.map(row => [...row]);
   let iterationCount = 0;
   const maxIterations = 20;
   
-  // Шаг 2: Нулевой граф (ОДИН РАЗ в начале)
+  // Построение графа смежности (только в начале)
   let zeroEdges = findZeroEdges(currentMatrix);
   
   steps.push({
@@ -405,26 +414,17 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
     phase: 'graph',
     matrix: currentMatrix.map(row => [...row]),
     zeroEdges,
-    description: `Шаг 2: Построен нулевой граф (${zeroEdges.length} нулевых рёбер)`,
+    description: `Матрица смежности орграфа Tₘ = (X, Y, ±0) - граф с ${zeroEdges.length} нулевыми рёбрами`,
   });
   
-  // Шаг 3: Максимальное паросочетание (ОДИН РАЗ в начале)
+  // Начинаем итерации
   let matching = findMaxMatching(currentMatrix);
   
-  steps.push({
-    stepIndex: ++stepIndex,
-    phase: 'matching',
-    matrix: currentMatrix.map(row => [...row]),
-    zeroEdges,
-    matching,
-    description: `Шаг 3: Найдено максимальное паросочетание (${matching.length} рёбер)`,
-  });
-  
-  while (iterationCount++ < maxIterations) {
-    // Обновляем zeroEdges для текущей матрицы (на случай модификации)
+  while (iterationCount < maxIterations) {
+    // Обновляем zeroEdges для текущей матрицы
     zeroEdges = findZeroEdges(currentMatrix);
     
-    // Шаг 4: Проверка мощности
+    // Операция 4: Проверка мощности паросочетания
     if (matching.length === n) {
       // Решение найдено!
       let totalCost = 0;
@@ -441,7 +441,7 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
         matching,
         isSolution: true,
         totalCost,
-        description: `Итерация ${iterationCount} - Шаг 4: Паросочетание совершенно! Найдено оптимальное решение (n=${n} рёбер)`,
+        description: `Итерация ${iterationCount}. Операция 4: Проверка мощности |M| = ${matching.length} = ${n}. Паросочетание совершенно! Решение найдено.`,
       });
       
       // Финальный шаг с исходной матрицей
@@ -452,7 +452,7 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
         matching,
         isSolution: true,
         totalCost,
-        description: `Финальное решение на исходной матрице. Минимальная стоимость: ${totalCost}`,
+        description: `Совершенное паросочетание, состоящее из нулей с минусом. Минимальная стоимость: Z* = ${totalCost}`,
       });
       
       break;
@@ -465,10 +465,10 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
       matrix: currentMatrix.map(row => [...row]),
       zeroEdges,
       matching,
-      description: `Итерация ${iterationCount} - Шаг 4: Паросочетание неполное (${matching.length} < ${n}), продолжаем алгоритм`,
+      description: `Итерация ${iterationCount}. Операция 4: Подсчёт мощности паросочетания |M| = ${matching.length} < ${n}. Решение не найдено, переходим к операции 5.`,
     });
     
-    // Шаг 5: Построить множества
+    // Операция 5: Поиск аугментальной цепи
     const { xPlus, yPlus, xMinus, yMinus, xLabels, yLabels, foundUnsaturatedY, bfsSteps } = buildAugmentingSet(currentMatrix, matching);
     
     steps.push({
@@ -484,11 +484,11 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
       yMinus,
       xLabels,
       yLabels,
-      description: `Итерация ${iterationCount} - Шаг 5: BFS для построения множеств. ${bfsSteps.join(' → ')}`,
+      description: `Итерация ${iterationCount}. Операция 5: Поиск аугментальной цепи. ${bfsSteps.join(' → ')}`,
     });
 
     if (foundUnsaturatedY !== null) {
-      // Шаг 6 (Аугментация): Найден чередующийся путь, увеличиваем паросочетание
+      // Операция 6 (Аугментация): Найден чередующийся путь, увеличиваем паросочетание
       const { newMatching, path, description: augmentDescription } = augmentMatching(matching, foundUnsaturatedY, xLabels, yLabels);
       
       steps.push({
@@ -500,37 +500,53 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
         matching, // Показываем старое паросочетание
         augmentingPath: path, // Добавляем чередующийся путь
         xPlus, yPlus, xLabels, yLabels, // Для визуализации пути
-        description: `Итерация ${iterationCount} - Шаг 6а: ${augmentDescription}`,
+        description: `Итерация ${iterationCount}. Операция 6: ${augmentDescription}`,
       });
       
       // Обновляем паросочетание
       matching = newMatching;
       
-      // Добавляем шаг с инвертированными знаками (уже новая итерация!)
+      // Инвертируем знаки (меняем статус свет/темн на противоположный)
       steps.push({
         stepIndex: ++stepIndex,
-        iterationNumber: iterationCount + 1,
+        iterationNumber: iterationCount,
         phase: 'transpose',
         matrix: currentMatrix.map(row => [...row]),
         zeroEdges,
         matching: newMatching, // Показываем новое паросочетание
-        augmentingPath: path, // Показываем путь для подсветки
-        description: `Итерация ${iterationCount + 1} - Шаг 6б: Инвертированы знаки вдоль чередующегося пути. Переход к шагу 4 (проверка мощности).`,
+        augmentingPath: path,
+        description: `Итерация ${iterationCount}. Операция 6: Инвертированы знаки нулей вдоль чередующегося пути. Переход к операции 4.`,
       });
       
-      // НЕ делаем continue - продолжаем в той же итерации, но теперь с новым паросочетанием
-      // Переходим к шагу 4 - проверка мощности с новым паросочетанием
-      // (код шага 4 выполнится на следующем проходе цикла)
+      // Переходим к следующей итерации с новым паросочетанием
+      iterationCount++;
       continue;
 
     } else {
-      // Шаг 6 (Покрытие): Чередующийся путь не найден, строим покрытие
-      // Покрываем строки из X⁺ и столбцы из Y⁺
-      // Непокрытыми остаются строки из X⁻ и столбцы из Y⁻
-      const uncoveredRows = new Set(xMinus); // X- не покрыты
-      const uncoveredCols = new Set(yMinus); // Y- не покрыты
-      const coveredRows = xPlus; // X+ покрыты
-      const coveredCols = yPlus; // Y+ покрыты
+      // Аугментальная цепь не найдена
+      // Очередь Q просмотрена до конца, аугментальной цепи не найдено
+      steps.push({
+        stepIndex: ++stepIndex,
+        iterationNumber: iterationCount,
+        phase: 'transpose',
+        matrix: currentMatrix.map(row => [...row]),
+        zeroEdges,
+        matching,
+        xPlus,
+        yPlus,
+        xMinus,
+        yMinus,
+        description: `Итерация ${iterationCount}. Операция 6: Очередь Q = ∅ просмотрена до конца, но аугментальной цепи не найдено. Управление передаётся операции 7 для изменения состава светлых дуг.`,
+      });
+      
+      // Операция 7: Изменить состав светлых дуг
+      // На этой операции меняется состав светлых дуг орграфа T_M
+      
+      // Находим покрытые/непокрытые строки и столбцы
+      const uncoveredRows = xMinus; // строки X- НЕ зачёркиваем
+      const uncoveredCols = yMinus; // столбцы Y- НЕ зачёркиваем
+      const coveredRows = xPlus; // строки X+ зачёркиваем
+      const coveredCols = yPlus; // столбцы Y+ зачёркиваем
       
       steps.push({
         stepIndex: ++stepIndex,
@@ -545,25 +561,41 @@ function computeHungarianGraphSteps(initialMatrix: Matrix): Step[] {
         yMinus,
         uncoveredRows,
         uncoveredCols,
-        description: `Итерация ${iterationCount} - Шаг 6: Покрываем строки X⁺={${Array.from(coveredRows).map(i => i+1).join(', ')}} и столбцы Y⁺={${Array.from(coveredCols).map(j => j+1).join(', ')}}`,
+        description: `Итерация ${iterationCount}. Операция 7: Отметки строк и столбцов предыдущей операции. Зачёркиваем строки X⁺={${Array.from(coveredRows).map(i => i+1).join(', ') || '∅'}} и столбцы Y⁺={${Array.from(coveredCols).map(j => j+1).join(', ') || '∅'}}.`,
       });
       
-      // Шаг 7: Модифицировать матрицу
+      // Находим минимальный элемент h на пересечении зачёркнутых строк и незачёркнутых столбцов
       const { modified, h } = modifyMatrix(currentMatrix, uncoveredRows, uncoveredCols);
       
       steps.push({
         stepIndex: ++stepIndex,
         iterationNumber: iterationCount,
         phase: 'modify',
-        matrix: modified,
-        matching, // Pass matching for correct zero display
+        matrix: currentMatrix.map(row => [...row]),
+        zeroEdges,
+        matching,
         h,
         uncoveredRows,
         uncoveredCols,
-        description: `Итерация ${iterationCount} - Шаг 7: Модифицируем матрицу (h=${h}): вычитаем из непокрытых, прибавляем к дважды покрытым. Возврат к шагу 3`,
+        description: `Итерация ${iterationCount}. Операция 7: Найден минимальный элемент h = ${h} на пересечении зачёркнутых строк и незачёркнутых столбцов. Вычитаем его из всех клеток отмеченных строк и прибавляем ко всем клеткам отмеченных столбцов.`,
+      });
+      
+      steps.push({
+        stepIndex: ++stepIndex,
+        iterationNumber: iterationCount,
+        phase: 'modify',
+        matrix: modified,
+        matching,
+        h,
+        description: `Итерация ${iterationCount}. Операция 7: Матрица с изменённым составом светлых дуг. Переход к операции 4.`,
       });
       
       currentMatrix = modified;
+      
+      // НЕ пересчитываем паросочетание - сохраняем текущее
+      // matching остаётся прежним
+      
+      iterationCount++;
     }
   }
   
@@ -820,11 +852,13 @@ export default function HungarianGraphVisualization() {
                     <th className="border px-1 sm:px-2 py-1 bg-gray-100"></th>
                     {Array.from({ length: n }, (_, j) => {
                       const yLabel = current.yLabels?.get(j);
+                      // Зачёркнутые столбцы - это те, которых НЕТ в uncoveredCols
+                      const isCrossed = current.uncoveredCols && !current.uncoveredCols.has(j);
                       return (
                         <th 
                           key={j} 
                           className={`border px-1 sm:px-2 py-1 text-center relative ${
-                            current.uncoveredCols && !current.uncoveredCols.has(j) ? 'bg-yellow-200' : 'bg-gray-100'
+                            isCrossed ? 'bg-yellow-200' : 'bg-gray-100'
                           }`}
                         >
                           {yLabel && (
@@ -832,11 +866,8 @@ export default function HungarianGraphVisualization() {
                               [{yLabel.order}_{yLabel.parentIndex + 1}]
                             </div>
                           )}
-                          <div>
-                            {j + 1}
-                            {current.uncoveredCols && !current.uncoveredCols.has(j) && (
-                              <span className="text-red-600 font-bold ml-1">✓</span>
-                            )}
+                          <div className={isCrossed ? 'line-through decoration-red-600 decoration-2' : ''}>
+                            y{j + 1}
                           </div>
                         </th>
                       );
@@ -846,11 +877,13 @@ export default function HungarianGraphVisualization() {
                 <tbody>
                   {current.matrix.map((row, i) => {
                     const xLabel = current.xLabels?.get(i);
+                    // Зачёркнутые строки - это те, которых НЕТ в uncoveredRows
+                    const isCrossed = current.uncoveredRows && !current.uncoveredRows.has(i);
                     return (
                       <tr key={i}>
                         <td 
                           className={`border px-1 sm:px-2 py-1 font-semibold text-center ${
-                            current.uncoveredRows && !current.uncoveredRows.has(i) ? 'bg-yellow-200' : 'bg-gray-100'
+                            isCrossed ? 'bg-yellow-200' : 'bg-gray-100'
                           }`}
                         >
                           {xLabel && (
@@ -858,10 +891,9 @@ export default function HungarianGraphVisualization() {
                               [{xLabel.order}_{xLabel.order === 1 && xLabel.parentIndex === 0 ? '0' : xLabel.parentIndex + 1}]
                             </div>
                           )}
-                          {i + 1}
-                          {current.uncoveredRows && !current.uncoveredRows.has(i) && (
-                            <span className="text-red-600 font-bold ml-1">✓</span>
-                          )}
+                          <span className={isCrossed ? 'line-through decoration-red-600 decoration-2' : ''}>
+                            x{i + 1}
+                          </span>
                         </td>
                         {row.map((val, j) => {
                         const isMatching = current.matching?.some(e => e.row === i && e.col === j);
@@ -870,21 +902,23 @@ export default function HungarianGraphVisualization() {
                         const isCovered = (current.uncoveredRows && !current.uncoveredRows.has(i)) || 
                                          (current.uncoveredCols && !current.uncoveredCols.has(j));
                         
-                        // Определяем отображение нулей в зависимости от фазы:
-                        // Шаг 2 (graph): показываем просто 0
-                        // Шаг 3 (matching): показываем 0* для выбранных в паросочетание
-                        // Шаг 4+ (check и далее): -0 для паросочетания, +0 для свободных
+                        // Определяем отображение нулей
                         let displayValue: string | number = val;
+                        let showSubscript = false;
+                        
                         if (isZero) {
-                          if (current.phase === 'graph') {
+                          // В начале (graph и reduction) - просто 0
+                          if (current.phase === 'reduction' || current.phase === 'graph') {
                             displayValue = '0';
-                          } else if (current.phase === 'matching') {
-                            displayValue = isMatching ? '0*' : '0';
-                          } else if (current.matching) {
+                          } 
+                          // Если есть паросочетание, показываем -0 и +0
+                          else if (current.matching && current.matching.length > 0) {
                             if (isMatching) {
                               displayValue = '-0';
+                              showSubscript = true;
                             } else {
                               displayValue = '+0';
+                              showSubscript = true;
                             }
                           } else {
                             displayValue = '0';
@@ -896,7 +930,8 @@ export default function HungarianGraphVisualization() {
                             key={j}
                             className={`border px-1 sm:px-2 py-1 sm:py-2 text-center ${
                               isInAugmentingPath ? 'bg-orange-300 font-bold' :
-                              isMatching ? 'bg-green-200 font-bold' :
+                              isMatching && !current.isSolution ? 'bg-green-200 font-bold' :
+                              current.isSolution && isMatching ? 'bg-green-300 font-bold' :
                               isZero ? 'bg-blue-50' :
                               isCovered ? 'bg-gray-200' :
                               'bg-white'
@@ -904,6 +939,7 @@ export default function HungarianGraphVisualization() {
                           >
                             <div className="text-[10px] sm:text-xs font-medium">
                               {displayValue}
+                              {showSubscript && isInAugmentingPath && <sub className="text-[8px]">→</sub>}
                             </div>
                           </td>
                         );
