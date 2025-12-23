@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - fogel
 
   workflow_dispatch:  # 👈 добавляем возможность ручного запуска
       inputs:
